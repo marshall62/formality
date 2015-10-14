@@ -1,0 +1,152 @@
+<html> <head> 
+<title>HTML and Hint Tag Help</title> <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"> 
+</head>  <body>   
+<BR> <a href="javascript: window.close()">Close Window</A>
+<H2>HTML and Hint Tag Help</H2> 
+<H3>HTML Help</H3>
+<pre>
+Use this tag for <b>images:</b> 
+
+&lt;IMG SRC="/4mality/media/images/<font color=red>14bandGraph.jpg</font>" BORDER=0&gt;
+
+The red part is the file name:  <font color=red>14bandGraph.jpg</font> 
+Notice that the question id, 14, is placed at the beginning of 
+the filename. This makes the file name unique- a requirement.
+(You can get the id from the question editor). 
+Just copy the tag above and paste it into the question
+stem in the editor. Then substitute only the name of your file. 
+Send me the file, I'll put it in it's proper place and voila, 
+it will be a masterpiece. Note: you can add HEIGHT and WIDTH
+attributes to the image tag with pixel values to adjust the
+size of the image, however, the best practice is to create
+the image to be the size you expect it to be on the page.
+
+<b>Popup windows</b> (like the one you are reading) are easy, but see me.
+Use this "tag" to call a popup window:
+
+&lt;a HREF="javascript: extraWindow('/4mality/media/html/<font color=red>23hint4d.html</font>')"&gt;<font color=red>Your text</font>&lt;/a&gt;
+
+Just put in the correct html file name and 
+the text you want to appear on the page.
+Send me the text, images, etc. you want in the popup.
+You can also use the template file: extraWinTemplate.txt
+
+This tag creates a <b>line break:</b>  &lt;br&gt;
+You can use several of them to get more vertical space: 
+&lt;br&gt;&lt;br&gt;&lt;br&gt;
+
+These six characters make the browser add a <b>horizontal space:</b> 
+&#38;nbsp;
+You can use several of them to get more horizontal space: 
+&#38;nbsp;&#38;nbsp;&#38;nbsp;&#38;nbsp;
+
+These are <b>font style</b> tags:  bold=&lt;b&gt;  italic=&lt;i&gt; 
+Note: you must supply closing tags (using the slash /) so the 
+browser knows when to stop applying the style. For example:   
+...it was the <i>way</i> he <b>said</b> it...
+looks like this in HTML:  
+..it was the &lt;i&gt;way&lt;/i&gt; he &lt;b&gt;said&lt;/b&gt; it...
+
+The <b>underline tag</b> is: &lt;u&gt;undelined text&lt;/u&gt;
+<u>undelined text</u>
+
+<b>Bullet Lists:</b>
+<ul>
+<li>First item
+<li>Second item
+<li>Third item
+</ul> 
+
+in html:
+&lt;ul&gt;<br>
+&lt;li&gt;First item<br>
+&lt;li&gt;Second item<br>
+&lt;li&gt;Third item<br>
+&lt;/ul&gt;
+
+Here is a <b>simple table</b> if you feel adventurous:
+<TABLE BORDER=1 CELLSPACING=0><tr>
+<td>Gordon</td><td>79,407</td></tr>
+<tr><td>Hillcrest</td><td>58,868</td></tr></table>
+
+Here is how to make it:
+&lt;TABLE BORDER=1 CELLSPACING=0&gt;
+&lt;tr&gt;
+&lt;td&gt;Gordon&lt;/td&gt;&lt;td&gt;79,407&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Hillcrest&lt;/td&gt;&lt;td&gt;58,868&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/table&gt;
+You can copy and paste this, substituting your data, making new cells 
+and rows as required.
+
+If you want to <font color=green>change</font><font color=red> font</font><font color=blue> colors</font> you can do this:
+&lt;font color=green&gt;text&lt;/font&gt;, 
+see me, or look at the source code for this page! 
+
+By the way, <b>certain characters are a no-no:</b> such as &lt; and &gt;.
+Use these nasty things instead:  &#38;lt;  &#38;gt;
+
+<b>Math Notation</b>
+This is often difficult in html, but we can try:
+
+<b>Fractions:</b> you can use the &lt;pre&gt; tag<br>
+<pre>
+   Here is one way to do fractions, although it is
+                          1
+   not real easy to align - the text around the fraction.
+                          3
+   You have to use a line for each number, as in this example.
+</pre>
+Here it is in html:
+&lt;pre&gt;<pre>
+   Here is one way to do fractions, although it is
+                          1
+   not real easy to align - the text around the fraction.
+                          3
+   You have to use a line for each number, as in this example.
+</pre>&lt;/pre&gt;<br>
+
+A more involved example:<br>
+<pre>
+                     -b &#177; Sqrt(b<sup>2</sup> - 4ac)
+                 x = -------------------
+                             2a
+</pre>
+
+
+<br>
+<H3>Hint Tags</H3>
+Each hint has a specific tag that identifies the text that should be 
+highlighted with the appropriate color when a specific hint is 
+selected. The hint tags work just the HTML font style tags: there is 
+a beginning tag and a closing tag. Whatever is between the tags will 
+be highlighted. For example, the words "Gordon Stadium" and "79,407" 
+in this marked up text:
+
+{h3a}Gordon Stadium{/h3a} can seat {h3a}79,407{/h3a} people,
+
+will appear highlighted when the hint at level 3 for coach a is 
+selected.
+Note: coaches are lettered a, b, c, d. 
+
+An easy way to apply tags is to go to the hint edit page. You get 
+there by clicking on the hint ID in the hint table on the question 
+editor page. That hint's tag will appear on the form. Copy it, go 
+back to the question edit page and paste the tag in the appropriate 
+place(s).
+
+You can put any number of hint tags around the text. The inactive 
+tags will be ignored. For example, the text "79,407" in these lines:
+
+{h3a}Gordon Stadium{/h3a} can 
+seat {h3a}{h5c}{h1a}79,407{/h1a}{/h5c}{/h3a} people,
+
+is marked up to be highlighted for three different hints. 
+Note: the order of hint tags does not matter, but you <b>must</b> 
+provide a closing tag for each opening tag- or bad things will happen!!!
+Test your question's appearance by selecting the "View Question" link
+on the question edit page.
+<BR> <BR> <a href="javascript: window.close()"><B>Close Window</B></A> 
+</body> </html>

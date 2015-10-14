@@ -1,0 +1,31 @@
+<!-- info at http://www.calculator.org/jcalcfaq.html#N0.76 -->
+
+<script language="javascript">
+var calc;
+function popupcalc(form, input)
+  {
+  // check the IE version
+  if(navigator.appName == 'Microsoft Internet Explorer') {
+    var index = navigator.appVersion.indexOf("MSIE");
+    var version = parseInt(navigator.appVersion.substring(index + 5, index + 8));
+    // work around window focus on IE5 by closing and reopening the calc window
+    if(6 > version) {
+      if(calc) calc.close();
+      }
+    }
+  var url = "/extapps/CtrEdAssess/calculator/jcalc98.html?bgcolor=";
+  url += "8594CB"; // set background colour here - (named colour or RGB omitting '#')
+  if(form) { url += "&amp;amp;amp;amp;amp;form=" + form; }
+  if(input) { url += "&amp;amp;amp;amp;amp;input=" + input; }
+  calc = open(url, "calculator", "width=250,height=345,left={width!=800},screenX={width!=800},top={height!=400},screenY={height!=400}");
+  calc.focus();
+  }
+function closeCalc(){
+  if(calc)
+     calc.close();
+}
+window.onunload=closeCalc;
+  </script>
+<!-- original color 408080 -->
+
+<a onclick="popupcalc(); return false;" href="/extapps/CtrEdAssess/calculator/jcalc98.html" onmouseover="status='start calculator'; return true;" onmouseout="status='';"><img src="/extapps/CtrEdAssess/calculator/images/calc__20x20.gif" alt="Calculator" border="0"/>Calculator</a>

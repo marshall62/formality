@@ -1,0 +1,169 @@
+package formality.servlet;
+
+import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.commons.fileupload.FileItemFactory;
+import org.apache.commons.fileupload.FileItem;
+import org.apache.commons.fileupload.disk.DiskFileItemFactory;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.ServletException;
+import javax.servlet.ServletConfig;
+import java.io.*;
+import java.util.Iterator;
+import java.util.List;
+import java.sql.SQLException;
+import java.sql.Connection;
+
+import formality.content.database.mysql.DBAccessor;
+import formality.content.MultipleChoiceQuestion;
+import formality.content.SystemInfo;
+import formality.html.AuthorHtml;
+import formality.controller.AuthoringSubsystem;
+import formality.model.UserInfo;
+
+/**
+ * Created by IntelliJ IDEA.
+ * User: marshall
+ * Date: Jul 13, 2010
+ * Time: 3:36:04 PM
+ * To change this template use File | Settings | File Templates.
+ */
+public class QuestionFileUploadServlet extends DbServlet {
+    private String imageFileDir;
+
+    public void init(ServletConfig config) throws ServletException {
+        super.init(config);
+        imageFileDir = this.getServletContext().getInitParameter("imgFileDir");
+    }
+
+    protected void doGet(HttpServletRequest request,
+                         HttpServletResponse response) throws ServletException, IOException {
+        doPost(request, response);
+    }
+
+    // TODO process the incoming files and question id so that a question can have a sound file and
+    // a video file saved with it.   
+    protected void doPost(HttpServletRequest request,
+                          HttpServletResponse response) throws ServletException, IOException {
+        int probId = 0;
+        String uid = "";
+        byte[] bytes = null;
+        byte[] spbytes = null;
+        byte[] imgbytes = null;
+        String filename="";
+
+        try {
+            conn = getConnection();
+        } catch (SQLException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+        if (ServletFileUpload.isMultipartContent(request)) {
+            // Create a factory for disk-based file items
+            FileItemFactory factory = new DiskFileItemFactory();
+            ServletFileUpload upload = new ServletFileUpload(factory);
+            List items = null;
+            try {
+                items = upload.parseRequest(request);
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            Iterator it = items.iterator();
+            while (it.hasNext()) {
+                FileItem item = (FileItem) it.next();
+                if (item.isFormField() && item.getFieldName().equals("qid")) {
+                    probId = new Integer(item.getString()).intValue();
+
+                }
+                if (item.isFormField() && item.getFieldName().equals("un")) {
+                    uid = item.getString();
+
+                }
+                else if (item.getFieldName().equals("qSound")) {
+                    if (item.getSize() > 0)
+                        bytes = item.get();
+                }
+                else if (item.getFieldName().equals("qSpanish")) {
+                    if (item.getSize() > 0)
+                        spbytes = item.get();
+                }
+                else if (item.getFieldName().equals("problemImage")) {
+                    if (item.getSize() > 0)   {
+                        imgbytes = item.get();
+                        filename = item.getName();
+                    }
+                }
+            }
+            try {
+                formality.content.SystemInfo info = new SystemInfo();
+//        info.setContextPath(request.getContextPath());//   /4mality
+                info.setContextPath(resourcePath);//   path to apache web folder where images,css,javascript is
+                info.setServletPath("/FormalityServlet");//  /servlet/FormalityServlet
+                StringBuffer msg = new StringBuffer();
+                try {
+                    boolean audioSave = saveAudioFile(conn, probId, bytes, spbytes); // will throw if failure
+                    if (audioSave)
+                        msg.append("Audio saved successfully.");
+                    if (imgbytes != null && imgbytes.length > 0)
+                        msg.append("<br> " + saveImageFile(probId,filename,imgbytes));
+                } catch (SQLException e) {
+                   msg.append("<br>Audio Saved FAILED!:  " + e.getErrorCode() + " " + e.getMessage());
+                }
+                UserInfo userInfo = new UserInfo();
+                new DBAccessor().loadSystemInfo(info, conn);
+                userInfo.setUserID(uid);
+                info.setUserInfo(userInfo);
+                response.setContentType("text/html");
+                AuthorHtml authorPage = new AuthorHtml();
+                AuthoringSubsystem as = new AuthoringSubsystem();
+
+//       MultipleChoiceQuestion q=loadMultipleChoiceQuestion(qID, info, conn);
+//       authorPage_.getEditMultiChoiceQuestionPage(q, null, info, msg_, page);
+
+                MultipleChoiceQuestion q = as.loadMultipleChoiceQuestion(Integer.toString(probId), info, conn);
+                StringBuffer out = new StringBuffer();
+                authorPage.getEditMultiChoiceQuestionPage(q, null, info, msg.toString(), out);
+                PrintWriter wr = new PrintWriter(response.getOutputStream());
+                wr.print(out);
+                wr.flush();
+                wr.close();
+            } catch (Exception e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+        }
+
+    }
+
+    private String saveImageFile(int probId, String filename, byte[] imgbytes) throws IOException {
+        String msg = "";
+        String path =imageFileDir + "\\" + filename ;
+        File f = new File(path);
+        if (filename.indexOf(Integer.toString(probId)) == -1)
+             return "File not written: Filename does not contain the problem ID. Name it something like stem"+probId+".jpg";
+        else if (f.exists()) {
+            msg= "Existing file " +filename+ " has been overwritten.";
+            msg += "<br>Refer to it as &lt;img src=&quot;{MediaRoot}/images/" +filename+ "&quot;/&gt;";
+            f.delete();
+        }
+        else {
+            msg="New file " + filename + " has been written.";
+            msg += "<br>Refer to it as &lt;img src=&quot;{MediaRoot}/images/" +filename+ "&quot;/&gt;";
+        }
+        System.out.println("Writing file " + path);
+        BufferedOutputStream bis = new BufferedOutputStream(new FileOutputStream(f));
+        bis.write(imgbytes);
+        bis.close();
+        return msg;
+    }
+
+    private boolean saveAudioFile(Connection conn, int probId, byte[] engAudio, byte[] spanAudio) throws SQLException {
+        boolean success=false;
+        if (engAudio != null && engAudio.length > 0)
+            success = new DBAccessor().updateQuestionAudioFile(conn, probId, "audio", engAudio) != 0;
+        if (spanAudio != null && spanAudio.length > 0)
+            success = new DBAccessor().updateQuestionAudioFile(conn, probId, "spanishAudio", spanAudio) != 0;
+        return success;
+    }
+
+}

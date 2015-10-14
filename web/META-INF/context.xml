@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Context path="/">
+        <Resource name="jdbc/formalitydb" type="javax.sql.DataSource"
+            auth="Container" description="Mysql database for 4mality"
+            maxActive="100" maxIdle="30" maxWait="10000" username="4malityUser"
+            password="4malityUser" removeAbandoned="true" removeAbandonedTimeout="60"
+            logAbandoned="true"  testWhileIdle="true"
+            testOnBorrow="true"
+            testOnReturn="true"
+            timeBetweenEvictionRunMillis="600000"
+            numTestsPerEvictionRun="10"
+            validationQuery="SELECT 1"
+            driverClassName="com.mysql.jdbc.Driver"
+            url="jdbc:mysql://rose.cs.umass.edu/formality?autoReconnect=true" />
+    <Resource name="jdbc/formalitydblocal" type="javax.sql.DataSource"
+            auth="Container" description="Mysql database for 4mality on localhost"
+            maxActive="100" maxIdle="30" maxWait="10000" username="4malityUser"
+            password="4malityUser" removeAbandoned="true" removeAbandonedTimeout="60"
+            logAbandoned="true"  testWhileIdle="true"
+            testOnBorrow="true"
+            testOnReturn="true"
+            timeBetweenEvictionRunMillis="600000"
+            numTestsPerEvictionRun="10"
+            validationQuery="SELECT 1"
+            driverClassName="com.mysql.jdbc.Driver"
+            url="jdbc:mysql://localhost/formality?autoReconnect=true" />
+
+
+</Context>

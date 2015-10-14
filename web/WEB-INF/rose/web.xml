@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- web.xml to run on cadmium only -->
+<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+		  http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+         version="2.5">
+    <context-param>
+        <param-name>error.adminemail</param-name>
+        <param-value>marshall@cs.umass.edu</param-value>
+    </context-param>
+    <context-param>
+        <param-name>error.smtpserver</param-name>
+        <param-value>mail.cs.umass.edu</param-value>
+    </context-param>
+    <context-param>
+        <param-name>error.logfile</param-name>
+        <param-value>4mality_ERROR_LOG.txt</param-value>
+    </context-param>
+    <context-param>
+        <param-name>error.logdir</param-name>
+        <param-value>/opt/apache-tomcat-7.0.53/webapps/errors</param-value>
+    </context-param>
+    <context-param>
+        <param-name>imgFileDir</param-name>
+        <param-value>/mnt/net/http/4mality/media/images</param-value>
+    </context-param>
+    <!-- this is a pointer to the apache web folder that provides resources for 4mality -->
+    <context-param>
+            <param-name>formalityResourceURI</param-name>
+            <param-value>http://rose.cs.umass.edu/4mality</param-value>
+    </context-param>
+    <context-param>
+        <param-name>debug</param-name>
+        <param-value>true</param-value>
+    </context-param>    
+
+    <servlet>
+        <servlet-name>FormalityServlet</servlet-name>
+        <servlet-class>formality.servlet.FormalityServlet</servlet-class>
+        <init-param>
+            <param-name>db</param-name>
+            <param-value>jdbc/formalitydblocal</param-value>
+        </init-param>
+         <init-param>
+            <param-name>questionAudioPath</param-name>
+            <param-value>/mnt/net/http/4mality/media/audio</param-value>
+        </init-param>
+        <!-- Problematic because 2 versions of wayang running and only 1 4mality so we don't really
+        know which to call -->
+        <init-param>
+            <param-name>wayangURI</param-name>
+            <param-value>http://rose.cs.umass.edu/woj/TutorBrain</param-value>
+        </init-param>
+
+    </servlet>
+    <servlet>
+        <servlet-name>EchoServlet</servlet-name>
+        <servlet-class>EchoServlet</servlet-class>
+    </servlet>
+
+
+    <servlet>
+        <servlet-name>StudentsFileUploadServlet</servlet-name>
+        <servlet-class>formality.servlet.StudentsFileUploadServlet</servlet-class>
+        <init-param>
+            <param-name>db</param-name>
+            <param-value>jdbc/formalitydb</param-value>
+        </init-param>
+
+    </servlet>
+
+ <servlet>
+        <servlet-name>MediaServlet</servlet-name>
+        <servlet-class>formality.servlet.MediaServlet</servlet-class>
+        <init-param>
+            <param-name>db</param-name>
+            <param-value>jdbc/formalitydb</param-value>
+        </init-param>
+        <init-param>
+            <param-name>questionAudioPath</param-name>
+            <param-value>/mnt/net/http/4mality/media/audio</param-value>
+        </init-param>
+    </servlet>
+    <servlet>
+          <servlet-name>QuestionFileUploadServlet</servlet-name>
+        <servlet-class>formality.servlet.QuestionFileUploadServlet</servlet-class>
+        <init-param>
+            <param-name>db</param-name>
+            <param-value>jdbc/formalitydb</param-value>
+        </init-param>
+        <init-param>
+            <param-name>questionAudioPath</param-name>
+            <param-value>/mnt/net/http/4mality/media/audio</param-value>
+        </init-param>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>FormalityServlet</servlet-name>
+        <url-pattern>/FormalityServlet</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>QuestionFileUploadServlet</servlet-name>
+        <url-pattern>/QuestionFileUploadServlet</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>StudentsFileUploadServlet</servlet-name>
+        <url-pattern>/StudentsFileUploadServlet</url-pattern>
+    </servlet-mapping>
+<servlet-mapping>
+    <servlet-name>MediaServlet</servlet-name>
+    <url-pattern>/MediaServlet</url-pattern>
+</servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>EchoServlet</servlet-name>
+        <url-pattern>/EchoServlet</url-pattern>
+    </servlet-mapping>
+
+
+</web-app>

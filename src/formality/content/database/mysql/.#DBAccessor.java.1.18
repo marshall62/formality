@@ -1,0 +1,3150 @@
+package formality.content.database.mysql;
+
+import formality.content.*;
+import formality.content.database.BaseDBAccessor;
+
+import java.util.Vector;
+import java.util.Iterator;
+import java.util.TreeMap;
+import java.util.ArrayList;
+import java.sql.*;
+
+import formality.systemerror.AuthoringException;
+import formality.model.StudentInfo;
+import formality.model.TeacherInfo;
+import formality.model.UserInfo;
+import formality.Util.DataTuple;
+import formality.Util.ReportDataUtils;
+import formality.controller.FormalitySubsystem;
+
+/**
+ * Created by IntelliJ IDEA.
+ * User: gordon
+ * Date: Apr 14, 2010
+ * Time: 10:07:37 PM
+ * <p/>
+ * Access Levels:
+ * 1- Student
+ * 2- Teacher
+ * 3- Author
+ * 4- Admin
+ */
+
+public class DBAccessor extends BaseDBAccessor {
+
+    public DBAccessor() {
+    }
+
+    //return dt: qID, score, ansSeq, hints
+    // may return an empty array
+    public ArrayList<DataTuple> loadModuleScores(String UID, String MID,
+                                                 Connection conn) throws Exception {
+        int uID = Integer.parseInt(UID);
+        int mID = Integer.parseInt(MID);
+        ArrayList<DataTuple> scores = new ArrayList<DataTuple>();
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT * FROM ModuleScore ");
+        query.append("WHERE userID= '").append(uID).append("' ");
+        query.append("AND modID='").append(mID).append("'; ");
+        ResultSet res = stmt.executeQuery(query.toString());
+        while (res.next()) {
+            DataTuple dt = new DataTuple();
+            dt.setFirst(res.getString("qID"));
+            dt.setSecond(res.getString("score"));
+            String a = res.getString("ansSeq");
+            if (a != null && a.equals("NULL"))
+                a = null;
+            dt.setThird(a);
+            dt.setFourth(res.getString("hints"));
+            scores.add(dt);
+        }
+        res.close();
+        stmt.close();
+        return scores;
+    }
+
+    public void updateModuleScoreHintFlag(String UID, String MID, String QID,
+                                          int hint, Connection conn) throws Exception {
+        int uID = Integer.parseInt(UID);
+        int mID = Integer.parseInt(MID);
+        int qID = Integer.parseInt(QID);
+        StringBuffer query = new StringBuffer();
+        query.append("UPDATE ModuleScore SET hints='").append(hint).append("' ");
+        query.append("WHERE userID= '").append(uID).append("' ");
+        query.append("AND modID='").append(mID).append("' ");
+        query.append("AND qID='").append(qID).append("';");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    public void updateModuleScoreAnsSeq(String UID, String MID, String QID,
+                                        String ansSeq, String scoreStr, Connection conn) throws Exception {
+        int uID = Integer.parseInt(UID);
+        int mID = Integer.parseInt(MID);
+        int qID = Integer.parseInt(QID);
+        int score = Integer.parseInt(scoreStr);
+        StringBuffer query = new StringBuffer();
+        query.append("UPDATE ModuleScore SET ansSeq='").append(safeStringCheck(ansSeq)).append("', ");
+        query.append("score='").append(score).append("' ");
+        query.append("WHERE userID= '").append(uID).append("' ");
+        query.append("AND modID='").append(mID).append("' ");
+        query.append("AND qID='").append(qID).append("'");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    public void resetModuleScore(String UID, String MID, String QID,
+                                 Connection conn) throws Exception {
+        int uID = Integer.parseInt(UID);
+        int mID = Integer.parseInt(MID);
+        int qID = Integer.parseInt(QID);
+        StringBuffer query = new StringBuffer();
+        query.append("UPDATE ModuleScore SET ");
+        query.append("score='0', ansSeq='NULL', hints='0' ");
+        query.append("WHERE userID= '").append(uID).append("' ");
+        query.append("AND modID='").append(mID).append("' ");
+        query.append("AND qID='").append(qID).append("'");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    public void initModuleScore(String UID, String MID, String QID,
+                                Connection conn) throws Exception {
+        int uID = Integer.parseInt(UID);
+        int mID = Integer.parseInt(MID);
+        int qID = Integer.parseInt(QID);
+        StringBuffer query = new StringBuffer();
+        query.append("INSERT INTO ModuleScore ");
+        query.append("(userID, modID, qID, score, ansSeq, hints) ");
+        query.append(" VALUES ( ");
+        query.append("'").append(uID).append("', ");
+        query.append("'").append(mID).append("', ");
+        query.append("'").append(qID).append("', ");
+        query.append("'0', ");
+        query.append("'NULL', ");
+        query.append("'0')");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+
+    }
+
+    public void loadSystemInfo(SystemInfo info, Connection conn) throws Exception {
+        loadTags(conn, info);
+        loadCategories(conn, info);
+        loadCoaches(conn, info);
+        loadStandards(conn, info);
+        loadStrategies(conn, info);
+    }
+
+    public int saveNewModule(QModule m, Connection conn) throws Exception {
+        StringBuffer query = new StringBuffer();
+        query.append("INSERT INTO Module (");
+        query.append("Name, ModuleType, Status, Author) ");
+        query.append(" VALUES ( ");
+        query.append("'").append(safeStringCheck(m.getName())).append("', ");
+        query.append("'").append(safeStringCheck(m.getType())).append("', ");
+        query.append("'").append(0).append("', ");
+        query.append("'").append(safeStringCheck(m.getAuthorID())).append("')");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+        int mID = getInsertionID("ModuleID", "Module", conn);
+        m.setID(Integer.toString(mID));
+        return mID;
+    }
+
+    public void saveModule(QModule m, Connection conn) throws Exception {
+        String mID = m.getID();
+        if (mID == null) {
+            AuthoringException ae = new AuthoringException();
+            ae.setMessage("Module ID=null, it is not initialized.");
+            throw ae;
+        }
+        StringBuffer query = new StringBuffer();
+        query.append("UPDATE Module SET ");
+        query.append("Name='").append(safeStringCheck(m.getName())).append("', ");
+        query.append("ModuleType='").append(m.getType()).append("', ");
+        if (m.getStatus() == true)
+            query.append("Status='").append(1).append("' ");
+        else
+            query.append("Status='").append(0).append("' ");
+
+        query.append(" WHERE ModuleID= '").append(mID).append("' ");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    //set the  correct user info object
+    public boolean loginUser(String login, String pwd,
+                             SystemInfo info, Connection conn) throws Exception {
+        boolean ok = false;
+        //the allowed length in the DB table
+        if (login.length() > 50 || pwd.length() > 50)
+            return ok;
+        UserInfo userInfo = null;
+        String userID = "";
+        String userFname = "";
+        String userLname = "";
+        int accessLevel = 0;
+        String institution = "";
+        String gender = "";
+        String state = "";
+        int age = 0;
+        boolean nativeEnglish = false;
+        boolean prevExp = false;
+        long sessionTS = 0;
+        String dname = "";
+        String modrec = "";
+        int condition = 0;
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT U.UserID, U.FirstName, U.LastName, U.AccessLevel, U.Institution, ");
+        query.append("U.Gender, U.Age, U.NativeEnglish, U.PrevExperience, U.SessionTS, U.State, ");
+        query.append("U.ModRecord, D.Name as DName, U.cond ");
+        query.append("FROM UserTable U, District D WHERE D.DistrictID=U.DistrictID ");
+        query.append("AND U.Login='").append(safeStringCheck(login)).append("'");
+        query.append(" AND U.Password='").append(safeStringCheck(pwd)).append("'");
+        ResultSet res = stmt.executeQuery(query.toString());
+        if (res.next()) {
+            ok = true;
+            userID = res.getString("UserID");
+            userFname = res.getString("FirstName");
+            userLname = res.getString("LastName");
+            accessLevel = res.getInt("AccessLevel");
+            institution = res.getString("Institution");
+            gender = res.getString("Gender");
+            age = res.getInt("Age");
+            nativeEnglish = res.getBoolean("NativeEnglish");
+            prevExp = res.getBoolean("PrevExperience");
+            Timestamp sessTS = res.getTimestamp("SessionTS");
+            if (res.wasNull())
+                sessionTS = 0;
+            else sessionTS = sessTS.getTime();
+            state = res.getString("State");
+            modrec = res.getString("ModRecord");
+            dname = res.getString("DName");
+            condition = res.getInt("cond");
+        }
+        res.close();
+        stmt.close();
+        if (accessLevel == 1) {
+            userInfo = new StudentInfo();
+            StudentInfo si = (StudentInfo) userInfo;
+            si.setSessionTS(sessionTS);
+        } else if (accessLevel == 2) {
+            userInfo = new TeacherInfo();
+        } else {
+            userInfo = new UserInfo();
+        }
+        userInfo.setUserID(userID);
+        userInfo.setUserFname(userFname);
+        userInfo.setUserLname(userLname);
+        userInfo.setAccessLevel(accessLevel);
+        userInfo.setInstitution(institution);
+        userInfo.setGender(gender);
+        userInfo.setAge(age);
+        userInfo.setNativeEnglish(nativeEnglish);
+        userInfo.setPrevExp(prevExp);
+        userInfo.setState(state);
+        userInfo.setModrec(modrec);
+        userInfo.setDistrict(dname);
+        userInfo.setCondition(condition);
+        info.setUserInfo(userInfo);
+        return ok;
+    }
+
+    //must have: login, password, access level
+    //return -1 if not successful, else return the new user ID
+    public int saveNewUser(String login, String pwd, String fName, String lName,
+                           int level, String inst, String r, Connection conn) throws Exception {
+        int uID = -1;
+        if (login.length() > 50 || pwd.length() > 50 || fName.length() > 50 || lName.length() > 50
+                || inst.length() > 50)
+            return uID;
+        StringBuffer query = new StringBuffer();
+        query.append("INSERT INTO UserTable (");
+        query.append("Login, Password, FirstName, LastName, AccessLevel, ");
+        query.append("Institution, Role)");
+        query.append(" VALUES ( ");
+        query.append("'").append(safeStringCheck(login)).append("', ");
+        query.append("'").append(safeStringCheck(pwd)).append("', ");
+        query.append("'").append(safeStringCheck(fName)).append("', ");
+        query.append("'").append(safeStringCheck(lName)).append("', ");
+        query.append(level).append(", ");
+        query.append("'").append(safeStringCheck(inst)).append("', ");
+        query.append("'").append(safeStringCheck(r)).append("')");
+        String qs = query.toString();
+        Statement stmt = conn.createStatement();
+        ResultSet res = null;
+        stmt.execute(qs);
+        res = stmt.getGeneratedKeys();
+        if (res.next()) {
+            uID = res.getInt("NewID");
+        }
+        res.close();
+        stmt.close();
+        return uID;
+    }
+
+    public int updateStudentSessionTS(String studId, long time, Connection conn) throws SQLException {
+        PreparedStatement stmt = null;
+        try {
+            String q = "update UserTable set SessionTS=? where userID=?";
+            stmt = conn.prepareStatement(q);
+            stmt.setTimestamp(1, new Timestamp(time));
+            stmt.setInt(2, Integer.parseInt(studId));
+            return stmt.executeUpdate();
+        } finally {
+            if (stmt != null)
+                stmt.close();
+        }
+    }
+
+    //return false if an ID is found for this login
+    public boolean checkUniqueLogin(String login, Connection conn) throws Exception {
+        boolean ok = false;
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append(" SELECT ").append("UserID");
+        query.append(" FROM ").append("UserTable");
+        query.append(" WHERE ").append("Login");
+        query.append("='").append(login).append("'");
+        ResultSet results = null;
+        // the identity value
+        String qs = query.toString();
+        results = stmt.executeQuery(qs);
+        if (results.next())
+            ok = false;
+        else {
+            ok = true;
+        }
+        results.close();
+        stmt.close();
+        return ok;
+    }
+
+    public boolean validateUser(SystemInfo info, String UID, Connection conn) throws Exception {
+        int uID = Integer.parseInt(UID);
+        boolean ok = false;
+        UserInfo userInfo = null;
+        String login = "";
+        String pwd = "";
+        String userFname = "";
+        String userLname = "";
+        int accessLevel = 0;
+        String institution = "";
+        String gender = "";
+        int age = 0;
+        boolean nativeEnglish = false;
+        boolean prevExp = false;
+        long sessionTS = 0;
+        String state = "";
+        String dname = "";
+        int condition = 0;
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT U.Login, U.Password, U.FirstName, U.LastName, U.AccessLevel, U.Institution, ");
+        query.append("U.Gender, U.Age, U.NativeEnglish, U.PrevExperience, U.SessionTS, U.State, D.Name as DName, U.cond ");
+        query.append("FROM UserTable U, District D WHERE D.DistrictID=U.DistrictID AND U.UserID='").append(uID).append("'");
+        ResultSet res = stmt.executeQuery(query.toString());
+        if (res.next()) {
+            login = res.getString("Login");
+            pwd = res.getString("Password");
+            userFname = res.getString("FirstName");
+            userLname = res.getString("LastName");
+            accessLevel = res.getInt("AccessLevel");
+            institution = res.getString("Institution");
+            gender = res.getString("Gender");
+            age = res.getInt("Age");
+            nativeEnglish = res.getBoolean("NativeEnglish");
+            prevExp = res.getBoolean("PrevExperience");
+            Timestamp sessTS = res.getTimestamp("SessionTS");
+            if (!res.wasNull())
+                sessionTS = sessTS.getTime();
+            state = res.getString("State");
+            dname = res.getString("DName");
+            condition = res.getInt("cond");
+            ok = true;
+        }
+        res.close();
+        stmt.close();
+        if (accessLevel == 1) {
+            userInfo = new StudentInfo();
+            StudentInfo si = (StudentInfo) userInfo;
+            si.setSessionTS(sessionTS);
+        } else if (accessLevel == 2) {
+            userInfo = new TeacherInfo();
+        } else {
+            userInfo = new UserInfo();
+        }
+        userInfo.setUserID(Integer.toString(uID));
+        userInfo.setLogin(login);
+        userInfo.setUserPwd(pwd);
+        userInfo.setUserFname(userFname);
+        userInfo.setUserLname(userLname);
+        userInfo.setAccessLevel(accessLevel);
+        userInfo.setInstitution(institution);
+        userInfo.setGender(gender);
+        userInfo.setAge(age);
+        userInfo.setNativeEnglish(nativeEnglish);
+        userInfo.setPrevExp(prevExp);
+        userInfo.setState(state);
+        userInfo.setDistrict(dname);
+        userInfo.setCondition(condition);
+        info.setUserInfo(userInfo);
+        return ok;
+    }
+
+    public void loadStudentInfo(String SID, StudentInfo info, Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT UserID, Login, Password, FirstName, LastName, AccessLevel, Institution, ");
+        query.append("Gender, Age, NativeEnglish, PrevExperience ");
+        query.append("FROM UserTable WHERE UserID='").append(sID).append("'");
+        ResultSet res = stmt.executeQuery(query.toString());
+        if (res.next()) {
+            info.setUserID(res.getString("UserID"));
+            info.setLogin(res.getString("Login"));
+            info.setUserPwd(res.getString("Password"));
+            info.setUserFname(res.getString("FirstName"));
+            info.setUserLname(res.getString("LastName"));
+            info.setAccessLevel(res.getInt("AccessLevel"));
+            info.setInstitution(res.getString("Institution"));
+            info.setGender(res.getString("Gender"));
+            info.setAge(res.getInt("Age"));
+            info.setNativeEnglish(res.getBoolean("NativeEnglish"));
+            info.setPrevExp(res.getBoolean("PrevExperience"));
+        }
+        res.close();
+        stmt.close();
+    }
+
+    public String getStudentLogin(String SID, Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        String name = null;
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT Login ");
+        query.append("FROM UserTable WHERE UserID='").append(sID).append("'");
+        ResultSet res = stmt.executeQuery(query.toString());
+        if (res.next()) {
+            name = res.getString("Login");
+        }
+        res.close();
+        stmt.close();
+        return name;
+    }
+
+    //Use the name if possible, else use login
+    public String getStudentNameOrLogin(String SID, Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        String sName = "";
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT Login, FirstName, LastName  ");
+        query.append("FROM UserTable WHERE UserID='").append(sID).append("'");
+        ResultSet res = stmt.executeQuery(query.toString());
+        if (res.next()) {
+            String login = res.getString("Login");
+            String fName = res.getString("FirstName");
+            String lName = res.getString("LastName");
+            if ((fName != null && fName.length() > 0 && !fName.equals(" "))
+                    || (lName != null && lName.length() > 0 && !lName.equals(" "))) {
+                sName = fName + " " + lName;
+            } else
+                sName = login;
+        }
+        res.close();
+        stmt.close();
+        return sName;
+    }
+
+    public void loadCategories(Connection conn, SystemInfo info) throws Exception {
+        Statement stmt = conn.createStatement();
+        String query = "SELECT * FROM Category";
+        ResultSet res = stmt.executeQuery(query);
+        while (res.next()) {
+            info.addCategory(res.getString("CategoryID"), res.getString("Name"));
+        }
+        res.close();
+        stmt.close();
+    }
+
+    public void loadStandards(Connection conn, SystemInfo info) throws Exception {
+        Statement stmt = conn.createStatement();
+        String query = "SELECT Title FROM FrameworkStandards";
+        ResultSet res = stmt.executeQuery(query);
+        while (res.next()) {
+            info.addStandard(res.getString("Title"));
+        }
+        res.close();
+        stmt.close();
+    }
+
+//     public void updateStudentSessionTS(String SID, long ts,
+//                                   Connection conn)throws Exception{
+//         int sID = Integer.parseInt(SID);
+//           StringBuffer query=new StringBuffer();
+//           query.append("UPDATE UserTable SET");
+//           query.append("SessionTS='").append(ts).append("'");
+//           query.append(" WHERE UserID= '").append(sID).append("'");
+//           Statement stmt=conn.createStatement();
+//           String qs=query.toString();
+//           try{
+//              stmt.executeUpdate(qs);}
+//              catch(Exception sex) {
+//                String msg=sex.getMessage();
+//                if(!msg.contains(sqlExceptionStr_))
+//                   throw sex;
+//               }
+//          stmt.close();
+//        }
+
+
+    public long getStudentSessionTS(String SID, Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        long ts = 0;
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append(" SELECT SessionTS FROM UserTable");
+        query.append(" WHERE UserID='").append(sID).append("'");
+        ResultSet results = null;
+        String qs = query.toString();
+        results = stmt.executeQuery(qs);
+        if (results.next()) {
+            ts = results.getTimestamp("SessionTS").getTime();
+        }
+        results.close();
+        stmt.close();
+        return ts;
+    }
+
+    public void loadCoaches(Connection conn, SystemInfo info) throws Exception {
+        Statement stmt = conn.createStatement();
+        String query = "SELECT * FROM Coach";
+        ResultSet res = stmt.executeQuery(query);
+        while (res.next()) {
+            info.addCoach(res.getString("CoachID"),
+                    res.getString("Name"),
+                    res.getString("Image"));
+        }
+        res.close();
+        stmt.close();
+    }
+
+    public void loadStrategies(Connection conn, SystemInfo info) throws Exception {
+        Statement stmt = conn.createStatement();
+        String query = "SELECT * FROM Strategy";
+        ResultSet res = stmt.executeQuery(query);
+        while (res.next()) {
+            info.addStrategy(res.getString("StrategyID"),
+                    res.getString("Name"));
+        }
+        res.close();
+        stmt.close();
+    }
+
+    public void loadTags(Connection conn, SystemInfo info) throws Exception {
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        String query = "SELECT * FROM " + tagColor;
+        res = stmt.executeQuery(query);
+        boolean ok = false;
+        while (res.next()) {
+            info.setTagColor(res.getString("Tag"), res.getString("Color"));
+        }
+        res.close();
+        stmt.close();
+    }
+
+    //want to exclude this mod and those with links to it
+    public Vector loadModulesWithQIDs(String cmID, Connection conn) throws Exception {
+        Vector mods = new Vector();
+        Vector ids = loadModuleIDs(conn);
+        for (int i = 0; i < ids.size(); i++) {
+            String curID = (String) ids.get(i);
+            if (!cmID.equals(curID) && !modModuleLinkExists(curID, cmID, conn)) {
+                QModule curM = loadModule(curID, conn);
+                mods.add(curM);
+            }
+        }
+        return mods;
+    }
+
+    public Vector loadModulesWithQIDs(Connection conn) throws Exception {
+        Vector mods = new Vector();
+        Vector ids = loadModuleIDs(conn);
+        for (int i = 0; i < ids.size(); i++) {
+            String curID = (String) ids.get(i);
+            QModule curM = loadModule(curID, conn);
+            mods.add(curM);
+        }
+        return mods;
+    }
+
+    public Vector loadModules(Connection conn) throws Exception {
+        Vector mods = new Vector();
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        String query = "SELECT * FROM Module";
+        res = stmt.executeQuery(query);
+        boolean ok = false;
+        QModule m;
+        while (res.next()) {
+            String mID = res.getString("ModuleID");
+            String name = res.getString("Name");
+            String type = res.getString("ModuleType");
+            boolean status = res.getBoolean("Status");
+            m = new QModule(mID, type);
+            m.setName(name);
+            m.setStatus(status);
+            mods.add(m);
+        }
+        res.close();
+        stmt.close();
+        return mods;
+    }
+
+    public Vector loadActiveModules(Connection conn) throws Exception {
+        Vector mods = new Vector();
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        String query = "SELECT * FROM Module WHERE Status=1";
+        res = stmt.executeQuery(query);
+        boolean ok = false;
+        QModule m;
+        while (res.next()) {
+            String mID = res.getString("ModuleID");
+            String name = res.getString("Name");
+            String type = res.getString("ModuleType");
+            boolean status = res.getBoolean("Status");
+            m = new QModule(mID, type);
+            m.setName(name);
+            m.setStatus(status);
+            mods.add(m);
+        }
+        res.close();
+        stmt.close();
+        return mods;
+    }
+
+    public Vector loadActiveModules(String CID, Connection conn) throws Exception {
+        int cID = Integer.parseInt(CID);
+        Vector mods = new Vector();
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT M.ModuleID, M.Name, M.ModuleType ");
+        query.append("FROM Module M, ModCourseLinks C WHERE ");
+        query.append("C.CourseID='").append(cID).append("' ");
+        query.append("AND M.ModuleID=C.ModuleID AND M.Status=1");
+        res = stmt.executeQuery(query.toString());
+        while (res.next()) {
+            DataTuple dt = new DataTuple();
+            dt.setFirst(res.getString("ModuleID"));
+            dt.setSecond(res.getString("Name"));
+            dt.setThird(res.getString("ModuleType"));
+            mods.add(dt);
+        }
+        res.close();
+        stmt.close();
+        return mods;
+    }
+
+    public Vector loadActiveModuleObjects(String CID, Connection conn) throws Exception {
+        int cID = Integer.parseInt(CID);
+        Vector mods = new Vector();
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT M.ModuleID, M.Name, M.ModuleType ");
+        query.append("FROM Module M, ModCourseLinks C WHERE ");
+        query.append("C.CourseID='").append(cID).append("' ");
+        query.append("AND M.ModuleID=C.ModuleID AND M.Status=1");
+        res = stmt.executeQuery(query.toString());
+        while (res.next()) {
+            String mID = res.getString("ModuleID");
+            String name = res.getString("Name");
+            String type = res.getString("ModuleType");
+            QModule m = new QModule(mID, type);
+            m.setName(name);
+            mods.add(m);
+        }
+        res.close();
+        stmt.close();
+        for (int i = 0; i < mods.size(); i++) {
+            QModule qm = (QModule) mods.get(i);
+            qm.setLinkedQuestionIDs(loadModuleQuestionLinks(qm.getID(), conn));
+        }
+        return mods;
+    }
+
+    public Vector loadActiveModulesOfType(String type, Connection conn) throws Exception {
+        Vector mods = new Vector();
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT ModuleID, Name, count(QuestionID)as TotalQCt ");
+        query.append(" FROM Module M, ModQuestionLinks L WHERE Status=1 AND ");
+        query.append("ModuleType='").append(safeStringCheck(type)).append("' ");
+        query.append("AND M.ModuleID=L.ModuleID group by ModuleID, Name");
+        res = stmt.executeQuery(query.toString());
+        boolean ok = false;
+        QModule m;
+        while (res.next()) {
+            String mID = res.getString("ModuleID");
+            String name = res.getString("Name");
+            int ct = res.getInt("TotalQCt");
+            m = new QModule(mID, type);
+            m.setName(name);
+            m.setQuestionCount(ct);
+            mods.add(m);
+        }
+        res.close();
+        stmt.close();
+        for (int i = 0; i < mods.size(); i++) {
+            QModule qm = (QModule) mods.get(i);
+            // if(qm.getType().equals("Test"))
+            qm.setParentModIDs(getModModuleLinks(qm.getID(), conn));
+
+        }
+        return mods;
+    }
+
+    //returns a Vector of QModule objects
+    public Vector loadActiveModulesOfType(String CID, String type, Connection conn) throws Exception {
+        int cID = Integer.parseInt(CID);
+        Vector mods = new Vector();
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT C.ModuleID, Name, count(QuestionID)as TotalQCt ");
+        query.append("FROM Module M, ModQuestionLinks L, ModCourseLinks C WHERE Status=1 ");
+        query.append("AND M.ModuleType='").append(safeStringCheck(type)).append("' AND C.CourseID='");
+        query.append(cID).append("' ");
+        query.append("AND C.ModuleID=M.ModuleID AND M.ModuleID=L.ModuleID ");
+        query.append("group by C.ModuleID, Name");
+        res = stmt.executeQuery(query.toString());
+        boolean ok = false;
+        QModule m;
+        while (res.next()) {
+            String mID = res.getString("ModuleID");
+            String name = res.getString("Name");
+            int ct = res.getInt("TotalQCt");
+            m = new QModule(mID, type);
+            m.setName(name);
+            m.setQuestionCount(ct);
+            mods.add(m);
+        }
+        res.close();
+        stmt.close();
+        for (int i = 0; i < mods.size(); i++) {
+            QModule qm = (QModule) mods.get(i);
+            // if(qm.getType().equals("Test")){
+            qm.setParentModIDs(getModModuleLinks(qm.getID(), conn));
+        }
+        return mods;
+    }
+
+    public void getUserCourseInfo(UserInfo info, Connection conn) throws Exception {
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        int sID = Integer.parseInt(info.getUserID());
+        query.append("SELECT C.CourseID, CourseName, Institution, Notes, Controller, ");
+        query.append("Scoreboard FROM Course C, UserCourseLinks S ");
+        query.append("WHERE C.CourseID=S.CourseID AND S.UserID='");
+        query.append(sID).append("'");
+        res = stmt.executeQuery(query.toString());
+        while (res.next()) {
+            Course c = new Course();
+            c.setCourseID(res.getString("CourseID"));
+            c.setCourseName(res.getString("CourseName"));
+            c.setInstitution(res.getString("Institution"));
+            c.setCourseNotes(res.getString("Notes"));
+            c.setCourseController(res.getString("Controller"));
+            c.setUseScoreboard(res.getBoolean("Scoreboard"));
+        }
+        res.close();
+        stmt.close();
+    }
+
+    public void loadStudentCourses(UserInfo info, Connection conn) throws Exception {
+        ArrayList<Course> courses = new ArrayList<Course>();
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        int sID = Integer.parseInt(info.getUserID());
+        query.append("SELECT C.CourseID, CourseName, Institution, Notes, Controller, District, Scoreboard FROM Course C, UserCourseLinks S ");
+        query.append("WHERE C.CourseID=S.CourseID AND S.UserID='");
+        query.append(info.getUserID()).append("'");
+        res = stmt.executeQuery(query.toString());
+        while (res.next()) {
+            Course c = new Course();
+            c.setCourseID(res.getString("CourseID"));
+            c.setCourseName(res.getString("CourseName"));
+            c.setInstitution(res.getString("Institution"));
+            c.setCourseNotes(res.getString("Notes"));
+            c.setCourseController(res.getString("Controller"));
+            c.setDistrict(res.getInt("District"));
+            c.setUseScoreboard(res.getBoolean("Scoreboard"));
+            courses.add(c);
+        }
+        res.close();
+        stmt.close();
+        info.setCourses(courses);
+    }
+
+    public String getCourseControllerName(UserInfo info, Connection conn) throws Exception {
+        int cID = Integer.parseInt(info.getCourseID());
+        String cName = null;
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT Controller FROM CourseController ");
+        query.append("WHERE CourseID= '").append(cID).append("'");
+        res = stmt.executeQuery(query.toString());
+        if (res.next())
+            cName = res.getString("Controller");
+        res.close();
+        stmt.close();
+        return cName;
+    }
+
+    public Vector getAllCourses(Connection conn) throws Exception {
+        Vector info = new Vector();
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT C.CourseID, C.CourseName, D.Name FROM Course C, District D ");
+        query.append("WHERE D.DistrictID=C.District");
+        res = stmt.executeQuery(query.toString());
+        while (res.next()) {
+            DataTuple dt = new DataTuple();
+            dt.setFirst(res.getString("CourseID"));
+            dt.setSecond(res.getString("CourseName"));
+            dt.setThird(res.getString("Name"));
+            info.add(dt);
+        }
+        res.close();
+        stmt.close();
+        return info;
+    }
+
+    public Vector getAllCourseIDs(Connection conn) throws Exception {
+        Vector info = new Vector();
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT CourseID FROM Course");
+        res = stmt.executeQuery(query.toString());
+        while (res.next()) {
+            info.add(res.getString("CourseID"));
+        }
+        res.close();
+        stmt.close();
+        return info;
+    }
+
+    public String getUserCourseID(String UID, Connection conn) throws Exception {
+        int uID = Integer.parseInt(UID);
+        String courseID = "0";
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("select CourseID from UserCourseLinks ");
+        query.append("WHERE UserID='").append(uID).append("'");
+        String qs = query.toString();
+        res = stmt.executeQuery(qs);
+        if (res.next()) {
+            courseID = res.getString("CourseID");
+        }
+        res.close();
+        stmt.close();
+        return courseID;
+    }
+
+
+    public void getAllStudentsInCourseNames(TeacherInfo info, Connection conn) throws Exception {
+        Vector names = new Vector();
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        int cID = Integer.parseInt(info.getCourseID());
+        StringBuffer query = new StringBuffer();
+        query.append("select U.UserID, U.Login, FirstName, LastName from UserTable U, UserCourseLinks S ");
+        query.append("WHERE U.UserID=S.UserID and U.AccessLevel=1 ");
+        query.append("and S.CourseID='").append(cID).append("'");
+        query.append(" order by LastName");
+        String qs = query.toString();
+        res = stmt.executeQuery(qs);
+        while (res.next()) {
+            DataTuple dt = new DataTuple();
+            dt.setFirst(res.getString("UserID"));
+            String sName = "";
+            String login = res.getString("Login");
+            String fName = res.getString("FirstName");
+            String lName = res.getString("LastName");
+            //Use the name if possible, else use login
+            if ((fName != null && fName.length() > 0 && !fName.equals(" "))
+                    || (lName != null && lName.length() > 0 && !lName.equals(" "))) {
+                sName = fName + " " + lName;
+            } else
+                sName = login;
+            dt.setSecond(sName);
+            names.add(dt);
+        }
+        res.close();
+        stmt.close();
+        info.setStudentNames(names);
+    }
+
+    //TreeMap:  key: userID, value:  firstname + lastname
+    public TreeMap<String, String> getAllStudentsInCourseNamesAndUserIDs(String courseID, Connection conn) throws Exception {
+        TreeMap<String, String> data = new TreeMap<String, String>();
+        int cID = Integer.parseInt(courseID);
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("select U.UserID, FirstName, LastName from UserTable U, UserCourseLinks S ");
+        query.append("WHERE U.UserID=S.UserID and U.AccessLevel=1 ");
+        query.append("and S.CourseID='").append(cID).append("'");
+        query.append(" order by LastName");
+        String qs = query.toString();
+        res = stmt.executeQuery(qs);
+        while (res.next()) {
+            String idStr = res.getString("UserID");
+            String nameStr = res.getString("FirstName") + " " + res.getString("LastName");
+            data.put(idStr, nameStr);
+        }
+        res.close();
+        stmt.close();
+        return data;
+    }
+
+
+    public boolean visitedModule(String UID, String MID, Connection conn) throws Exception {
+        int uID = Integer.parseInt(UID);
+        int mID = Integer.parseInt(MID);
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT * FROM StudentSessionData WHERE UserID=").append(uID);
+        query.append("AND ModID=").append(mID);
+        res = stmt.executeQuery(query.toString());
+        boolean ok = false;
+        if (res.next()) {
+            ok = true;
+        }
+        res.close();
+        stmt.close();
+        return ok;
+    }
+
+    public Vector loadModuleIDs(Connection conn) throws Exception {
+        Vector modIDs = new Vector();
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        String query = "SELECT ModuleID FROM Module";
+        res = stmt.executeQuery(query);
+        boolean ok = false;
+        QModule m;
+        while (res.next()) {
+            modIDs.add(res.getString("ModuleID"));
+        }
+        res.close();
+        stmt.close();
+        return modIDs;
+    }
+
+    //load module and q links (as qIDs)
+    public QModule loadModule(String MID, Connection conn) throws Exception {
+        int mID = Integer.parseInt(MID);
+        QModule m = new QModule();
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        String query = "SELECT * FROM Module WHERE ModuleID='" + mID + "'";
+        res = stmt.executeQuery(query);
+        while (res.next()) {
+            m.setID(res.getString("ModuleID"));
+            m.setName(res.getString("Name"));
+            m.setType(res.getString("ModuleType"));
+            m.setStatus(res.getBoolean("Status"));
+            m.setAuthorID(res.getString("Author"));
+        }
+        res.close();
+        stmt.close();
+        m.setLinkedQuestionIDs(loadModuleQuestionLinks(MID, conn));
+        m.setParentModIDs(getModModuleLinks(MID, conn));
+        return m;
+    }
+
+    //load module and q links (as qIDs), NO dependencies
+    public QModule loadModule2(String MID, Connection conn) throws Exception {
+        int mID = Integer.parseInt(MID);
+        QModule m = new QModule();
+        Vector linkedQIDs = new Vector();
+        //the actual question objects
+        Vector linkedQs = new Vector();
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("select M.ModuleID, M.Name, M.ModuleType, M.Status, M.orderStr, M.Author, Q.QuestionID, Q.Qtype, ");
+        query.append("Q.Author, Q.Source, Q.Degree, Q.CategoryID, Q.Ready, Q.DiffLevel, Q.Stem, Q.Std1, Q.Std2, Q.Std3, Q.Topic,Q.audio,Q.spanishAudio,Q.answerLayout ");
+        query.append("FROM module M, ModQuestionLinks L, Question Q ");
+        query.append("WHERE M.moduleid=L.moduleid AND L.questionid=Q.questionid AND M.moduleid='").append(mID).append("'");
+        int i = 0;
+        String qID = "";
+        String qType = "";
+        res = stmt.executeQuery(query.toString());
+        while (res.next()) {
+            if (i == 0) {
+                m.setID(res.getString("ModuleID"));
+                m.setName(res.getString("Name"));
+                m.setType(res.getString("ModuleType"));
+                m.setStatus(res.getBoolean("Status"));
+                m.setAuthorID(res.getString("Author"));
+            }
+            qID = res.getString("QuestionID");
+            linkedQIDs.add(qID);
+            qType = res.getString("QType");
+            if (qType.equals("mc")) {
+                MultipleChoiceQuestion q = new MultipleChoiceQuestion(qID);
+                q.setAuthor(res.getString("Author"));
+                q.setSource(res.getString("Source"));
+                q.setDegree(res.getString("Degree"));
+                q.setCategoryID(res.getString("CategoryID"));
+                q.setStatus(res.getBoolean("Ready"));
+                q.setDiffLevel(res.getDouble("DiffLevel"));
+                q.setStem(res.getString("Stem"));
+                q.setStd1(res.getString("Std1"));
+                q.setStd2(res.getString("Std2"));
+                q.setStd3(res.getString("Std3"));
+                q.setTopic(res.getString("Topic"));
+                q.setAudio(res.getBytes("audio"));
+                q.setSpanishAudio(res.getBytes("spanishAudio"));
+                q.setSequentialLayout(res.getInt("answerLayout") == Question.ANSWER_LAYOUT_SEQUENTIAL);
+                linkedQs.add(q);
+            } else {
+                Question q = new Question(qID);
+                q.setAuthor(res.getString("Author"));
+                q.setSource(res.getString("Source"));
+                q.setDegree(res.getString("Degree"));
+                q.setCategoryID(res.getString("CategoryID"));
+                q.setStatus(res.getBoolean("Ready"));
+                q.setDiffLevel(res.getDouble("DiffLevel"));
+                q.setStem(res.getString("Stem"));
+                q.setStd1(res.getString("Std1"));
+                q.setStd2(res.getString("Std2"));
+                q.setStd3(res.getString("Std3"));
+                q.setTopic(res.getString("Topic"));
+                q.setAudio(res.getBytes("audio"));
+                q.setSpanishAudio(res.getBytes("spanishAudio"));
+                q.setSequentialLayout(res.getInt("answerLayout") == Question.ANSWER_LAYOUT_SEQUENTIAL);
+                linkedQs.add(q);
+            }
+            i++;
+        }
+        res.close();
+        stmt.close();
+        m.setLinkedQuestionIDs(linkedQIDs);
+        m.setLinkedQuestions(linkedQs);
+        //m.setParentModIDs(getModModuleLinks(mID, conn));
+        return m;
+    }
+
+    public void loadModuleQCounts(Connection conn, Iterator modit) throws Exception {
+        while (modit.hasNext()) {
+            QModule m = (QModule) modit.next();
+            getModuleQCount(conn, m);
+        }
+    }
+
+
+    public void getModuleQCount(Connection conn, QModule m) throws Exception {
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        int mID = Integer.parseInt(m.getID());
+        String query = "SELECT Count(*) as Qcount FROM Module, ModQuestionLinks WHERE Module.ModuleID='"
+                + mID + "' AND Module.ModuleID = ModQuestionLinks.ModuleID";
+        res = stmt.executeQuery(query);
+        boolean ok = false;
+        while (res.next()) {
+            ;// m.setQuestionCount(res.getInt("Qcount"));
+        }
+        res.close();
+        stmt.close();
+    }
+
+    /* if deleting a module */
+    public void deleteModQuestionLinks(String MID, Connection conn) throws Exception {
+        int mID = Integer.parseInt(MID);
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("DELETE FROM ModQuestionLinks WHERE ModuleID='").append(mID).append("'");
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    /* if deleting a module */
+    public void deleteModCourseLinks(String MID, Connection conn) throws Exception {
+        int mID = Integer.parseInt(MID);
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("DELETE FROM ModCourseLinks WHERE ModuleID='").append(mID).append("'");
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    /* if deleting a course */
+    public void deleteAllModCourseLinks(String CID, Connection conn) throws Exception {
+        int cID = Integer.parseInt(CID);
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("DELETE FROM ModCourseLinks WHERE CourseID='").append(cID).append("'");
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    public void deleteAllModModuleLinks(String CMID, Connection conn) throws Exception {
+        int cmID = Integer.parseInt(CMID);
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("DELETE FROM ModModuleLinks WHERE ChildModID='").append(cmID).append("'");
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    public void deleteModModuleLink(String PMID, String CMID, Connection conn) throws Exception {
+        int pmID = Integer.parseInt(PMID);
+        int cmID = Integer.parseInt(CMID);
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("DELETE FROM ModModuleLinks WHERE ParentModID='").append(pmID).append("'");
+        query.append(" AND ChildModID='").append(cmID).append("'");
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    public void deleteModCourseLink(String MID, String CID, Connection conn) throws Exception {
+        int mID = Integer.parseInt(MID);
+        int cID = Integer.parseInt(CID);
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("DELETE FROM ModCourseLinks WHERE ModuleID='").append(mID).append("'");
+        query.append(" AND CourseID='").append(cID).append("'");
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    //get a vector of qIDs linked to this module
+    public Vector loadModuleQuestionLinks(String MID, Connection conn) throws Exception {
+        int mID = Integer.parseInt(MID);
+        Vector linkedQIDs = new Vector();
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT QuestionID from ModQuestionLinks where ModuleID='").append(mID).append("'");
+        String qs = query.toString();
+        res = stmt.executeQuery(qs);
+        while (res.next()) {
+            linkedQIDs.add(res.getString("QuestionID"));
+        }
+        res.close();
+        stmt.close();
+        return linkedQIDs;
+    }
+
+    //return the new ID number
+    public int saveNewMultipleChoiceSurveyQuestion(MultiChoiceSurveyQuestion q, Connection conn) throws Exception {
+        int qID = saveNewSurveyQuestion(q, conn);
+        q.setID(Integer.toString(qID));
+        saveNewMultipleChoiceSurveyQuestionAnswers(q, conn);
+        return qID;
+    }
+
+    //return the new ID number
+    public int saveNewMultipleChoiceQuestion(MultipleChoiceQuestion q, Connection conn) throws Exception {
+        int qID = saveNewQuestion(q, conn);
+        q.setID(Integer.toString(qID));
+        saveNewMultipleChoiceQuestionAnswers(q, conn);
+        return qID;
+    }
+
+    public void saveMultipleChoiceQuestion(MultipleChoiceQuestion q, Connection conn) throws Exception {
+        saveQuestion(q, conn);
+        saveMultipleChoiceQuestionAnswers(q, conn);
+    }
+
+    public void saveMultipleChoiceSurveyQuestion(MultiChoiceSurveyQuestion q, Connection conn) throws Exception {
+        saveSurveyQuestion(q, conn);
+        saveMultipleChoiceSurveyQuestionAnswers(q, conn);
+    }
+
+    public int updateQuestionAudioFile(Connection conn, int qid, String col, byte[] audio) throws SQLException {
+        String q = "update Question set " + col + "=? where questionID=?";
+        PreparedStatement ps = conn.prepareStatement(q);
+        ps.setBytes(1, audio);
+        ps.setInt(2, qid);
+        int n = ps.executeUpdate();
+        ps.close();
+        return n;
+    }
+
+    public void saveQuestion(Question q, Connection conn) throws Exception {
+        String QID = q.getID();
+        if (QID == null) {
+            AuthoringException ae = new AuthoringException();
+            ae.setMessage("Question ID=null, it is not initialized.");
+            throw ae;
+        }
+        int qID = Integer.parseInt(QID);
+        String deg = safeStringCheck(q.getDegree());
+        int cID = Integer.parseInt(q.getCategoryID());
+        StringBuffer query = new StringBuffer();
+        query.append("UPDATE Question SET ");
+        query.append("Source='").append(safeStringCheck(q.getSource())).append("', ");
+        query.append("Degree='").append(deg).append("', ");
+        query.append("CategoryID='").append(cID).append("', ");
+        if (q.getStatus() == true)
+            query.append("Ready='").append(1).append("', ");
+        else
+            query.append("Ready='").append(0).append("', ");
+        query.append("Stem='").append(safeStringCheck(q.getStem())).append("', ");
+        query.append("Std1='").append(q.getStd1()).append("', ");
+        query.append("Std2='").append(q.getStd2()).append("', ");
+        query.append("Std3='").append(q.getStd3()).append("', ");
+        query.append("Topic='").append(safeStringCheck(q.getTopic())).append("',");
+        query.append("answerLayout=" + (q.isSequentialLayout() ? "0" : "1"));
+        query.append(" WHERE QuestionID= '").append(qID).append("' ");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception ex) {
+            String msg = ex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw ex;
+        }
+        stmt.close();
+    }
+
+    public int saveSurveyQuestion(Question qu, Connection conn) throws Exception {
+        PreparedStatement stmt=null;
+        try {
+            String q = "update Question set Stem=?, answerLayout=? where QuestionID=?";
+            stmt = conn.prepareStatement(q);
+            stmt.setString(1,qu.getStem());
+            stmt.setBoolean(2,!qu.isSequentialLayout());
+            stmt.setInt(3,Integer.parseInt(qu.getID()));
+            return stmt.executeUpdate();
+        } finally {
+            if (stmt != null)
+                stmt.close();
+        }
+    }
+
+
+    public int saveNewSurveyQuestion(Question quest, Connection conn) throws SQLException {
+        ResultSet rs = null;
+        PreparedStatement stmt = null;
+        try {
+            String q = "insert into Question (qtype, isSurvey, author,ready, stem, answerLayout, categoryID) values (?,1,?,?,?,?, (select categoryID from category where name='Survey Question'))";
+            stmt = conn.prepareStatement(q);
+            stmt.setString(1, quest.getType());
+            stmt.setString(2, quest.getAuthor());
+            stmt.setBoolean(3, true); // make survey questions always ready
+            stmt.setString(4, quest.getStem());
+            stmt.setBoolean(5, !quest.isSequentialLayout());
+            stmt.execute();
+            rs = stmt.getGeneratedKeys();
+            rs.next();
+            return rs.getInt(1);
+        }
+        finally {
+            if (rs != null)
+                rs.close();
+            if (stmt != null)
+                stmt.close();
+        }
+    }
+
+    public int saveNewQuestion(Question q, Connection conn) throws Exception {
+        StringBuffer query = new StringBuffer();
+        query.append("INSERT INTO Question (");
+        query.append("QType, Author, Source, Degree, CategoryID, Ready, ");
+        query.append("DiffLevel, Stem, Std1, Std2, Std3, Topic, answerLayout) ");
+        query.append(" VALUES(");
+        query.append("'").append(safeStringCheck(q.getType())).append("', ");
+        query.append("'").append(safeStringCheck(q.getAuthor())).append("', ");
+        query.append("'").append(safeStringCheck(q.getSource())).append("', ");
+        query.append("'").append(safeStringCheck(q.getDegree())).append("', ");
+        query.append("'").append(q.getCategoryID()).append("', ");
+        if (q.getStatus() == true)
+            query.append("'").append(1).append("', ");
+        else
+            query.append("'").append(0).append("', ");
+        query.append("'").append(q.getDiffLevel()).append("', ");
+        query.append("'").append(safeStringCheck(q.getStem())).append("', ");
+        query.append("'").append(q.getStd1()).append("', ");
+        query.append("'").append(q.getStd2()).append("', ");
+        query.append("'").append(q.getStd3()).append("', ");
+        query.append("'").append(safeStringCheck(q.getTopic())).append("', ");
+        query.append("'").append(q.isSequentialLayout() ? "0" : "1").append("' ");
+        query.append(")");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+        int id = getInsertionID("QuestionID", "Question", conn);
+        return id;
+    }
+
+    public Question loadQuestion(Question q,
+                                 Connection conn) throws Exception {
+        int qID = Integer.parseInt(q.getID());
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT * FROM Question WHERE QuestionID= '").append(qID).append("' ");
+        Statement stmt = conn.createStatement();
+        String queryStr = query.toString();
+        ResultSet res = stmt.executeQuery(queryStr);
+        String nm = res.getMetaData().getColumnName(11);
+        int sz = res.getMetaData().getColumnDisplaySize(11);
+        while (res.next()) {
+            q.setType(res.getString("QType"));
+            q.setAuthor(res.getString("Author"));
+            q.setSource(res.getString("Source"));
+            q.setDegree(res.getString("Degree"));
+            q.setCategoryID(res.getString("CategoryID"));
+            q.setStatus(res.getBoolean("Ready"));
+            q.setDiffLevel(res.getDouble("DiffLevel"));
+            String stm = res.getString("Stem");
+            q.setStem(stm);
+            q.setStd1(res.getString("Std1"));
+            q.setStd2(res.getString("Std2"));
+            q.setStd3(res.getString("Std3"));
+            q.setTopic(res.getString("Topic"));
+            q.setAudio(res.getBytes("audio"));
+            q.setSpanishAudio(res.getBytes("spanishAudio"));
+            q.setSequentialLayout(res.getInt("answerLayout") == Question.ANSWER_LAYOUT_SEQUENTIAL);
+            q.setSurvey(res.getBoolean("isSurvey"));
+
+        }
+        res.close();
+        stmt.close();
+        return q;
+    }
+
+    //get the question data
+    public Question loadQuestion(String QID,
+                                 Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        Question q = new Question(QID);
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT * FROM Question WHERE QuestionID= '").append(qID).append("' ");
+        Statement stmt = conn.createStatement();
+        ResultSet res = stmt.executeQuery(query.toString());
+        while (res.next()) {
+            q.setType(res.getString("QType"));
+            q.setAuthor(res.getString("Author"));
+            q.setSource(res.getString("Source"));
+            q.setDegree(res.getString("Degree"));
+            q.setCategoryID(res.getString("CategoryID"));
+            q.setStatus(res.getBoolean("Ready"));
+            q.setDiffLevel(res.getDouble("DiffLevel"));
+            q.setStem(res.getString("Stem"));
+            q.setStd1(res.getString("Std1"));
+            q.setStd2(res.getString("Std2"));
+            q.setStd3(res.getString("Std3"));
+            q.setTopic(res.getString("Topic"));
+            q.setAudio(res.getBytes("audio"));
+            q.setSpanishAudio(res.getBytes("spanishAudio"));
+            q.setSequentialLayout(res.getInt("answerLayout") == Question.ANSWER_LAYOUT_SEQUENTIAL);
+            q.setSurvey(res.getBoolean("isSurvey"));
+        }
+        res.close();
+        stmt.close();
+        return q;
+    }
+
+
+    public Vector getAllQuestionsInCategory(String CID, Connection conn) throws Exception {
+        int cID = Integer.parseInt(CID);
+        Vector catQs = new Vector();
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT QuestionID, QType, Stem, Author, Std1, Std2, Std3, Topic,audio,spanishAudio,answerLayout,isSurvey FROM Question WHERE CategoryID= '").append(cID).append("' ");
+        Statement stmt = conn.createStatement();
+        ResultSet res = stmt.executeQuery(query.toString());
+        while (res.next()) {
+            Question q = new Question(res.getString("QuestionID"));
+            q.setType(res.getString("QType"));
+            q.setStem(res.getString("Stem"));
+            q.setAuthor(res.getString("Author"));
+            q.setAudio(res.getBytes("audio"));
+            q.setSpanishAudio(res.getBytes("spanishAudio"));
+            q.setSequentialLayout(res.getInt("answerLayout") == Question.ANSWER_LAYOUT_SEQUENTIAL);
+            String std = res.getString("Std1");
+            if (res.wasNull())
+                std = null;
+            String topicStr = res.getString("Topic");
+            if (std != null && !std.equals(""))
+                q.setStd1(std);
+            std = res.getString("Std2");
+            if (res.wasNull())
+                std = null;
+            if (std != null && !std.equals(""))
+                q.setStd2(std);
+            std = res.getString("Std3");
+            if (res.wasNull())
+                std = null;
+            if (std != null && !std.equals(""))
+                q.setStd3(std);
+            if (topicStr == null || topicStr.equals(""))
+                topicStr = "null";
+            q.setTopic(topicStr);
+            q.setSurvey(res.getBoolean("isSurvey"));
+            catQs.add(q);
+        }
+        res.close();
+        stmt.close();
+        return catQs;
+    }
+
+    public Vector getAllQuestionsInCategory(String MID, String CID, Connection conn) throws Exception {
+        Vector linkedQIDs = loadModuleQuestionLinks(MID, conn);
+        Vector catQs = new Vector();
+        StringBuffer query = new StringBuffer();
+        int cID = Integer.parseInt(CID);
+        query.append("SELECT QuestionID, QType, Stem, Author, Std1, Std2, Std3, Topic, audio,spanishAudio,answerLayout,isSurvey FROM Question WHERE CategoryID= '").append(cID).append("' ");
+        Statement stmt = conn.createStatement();
+        ResultSet res = stmt.executeQuery(query.toString());
+        while (res.next()) {
+            String qID = res.getString("QuestionID");
+            if (!linkedQIDs.contains(qID)) {
+                Question q = new Question(qID);
+                q.setType(res.getString("QType"));
+                q.setStem(res.getString("Stem"));
+                q.setAuthor(res.getString("Author"));
+                q.setAudio(res.getBytes("audio"));
+                q.setSpanishAudio(res.getBytes("spanishAudio"));
+                q.setSequentialLayout(res.getInt("answerLayout") == Question.ANSWER_LAYOUT_SEQUENTIAL);
+                String std = res.getString("Std1");
+                String topicStr = res.getString("Topic");
+                if (std != null && !std.equals(""))
+                    q.setStd1(std);
+                std = res.getString("Std2");
+                if (std != null && !std.equals(""))
+                    q.setStd2(std);
+                std = res.getString("Std3");
+                if (std != null && !std.equals(""))
+                    q.setStd3(std);
+                if (topicStr == null || topicStr.equals(""))
+                    topicStr = "null";
+                q.setTopic(topicStr);
+                q.setSurvey(res.getBoolean("isSurvey"));
+                catQs.add(q);
+            }
+        }
+        return catQs;
+    }
+
+    public TreeMap getQuestionsInCategoriesCounts(Iterator cIDs, Connection conn) throws Exception {
+        TreeMap cts = new TreeMap();
+        while (cIDs.hasNext()) {
+            String cID = (String) cIDs.next();
+            String ct = getQuestionCountInCategory(cID, conn);
+            cts.put(cID, ct);
+        }
+        return cts;
+    }
+
+    public String getQuestionCountInCategory(String CID, Connection conn) throws Exception {
+        int cID = Integer.parseInt(CID);
+        String count = "";
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT Count(*) as 'ct' FROM Question WHERE CategoryID= '").append(cID).append("' ");
+        Statement stmt = conn.createStatement();
+        ResultSet res = stmt.executeQuery(query.toString());
+        if (res.next())
+            count = res.getString("ct");
+        return count;
+    }
+
+    public void loadQuestionStandards(Question q,
+                                      Connection conn) throws Exception {
+        int qID = Integer.parseInt(q.getID());
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT FrameworkStd FROM QuestionFrameworkLinks WHERE q.QuestionID= '");
+        query.append(qID).append("' ");
+        Statement stmt = conn.createStatement();
+        ResultSet res = stmt.executeQuery(query.toString());
+        int i = 1;
+        while (res.next()) {
+            if (i == 1)
+                q.setStd1(res.getString("FrameworkStd"));
+            if (i == 2)
+                q.setStd2(res.getString("FrameworkStd"));
+            if (i == 3)
+                q.setStd3(res.getString("FrameworkStd"));
+            i++;
+        }
+        res.close();
+        stmt.close();
+    }
+
+    public MultiChoiceSurveyQuestion loadMultipleChoiceSurveyQuestion(String qID,
+                                                                      Connection conn) throws Exception {
+        MultiChoiceSurveyQuestion q = new MultiChoiceSurveyQuestion(qID);
+        loadQuestion(q, conn);
+        loadMultipleChoiceSurveyQuestionAnswers(q, conn);
+        return q;
+    }
+
+    public MultipleChoiceQuestion loadMultipleChoiceQuestion(String qID,
+                                                             Connection conn) throws Exception {
+        MultipleChoiceQuestion q = new MultipleChoiceQuestion(qID);
+        loadQuestion(q, conn);
+        loadMultipleChoiceQuestionAnswers(q, conn);
+        return q;
+    }
+
+    public void deleteMultipleChoiceQuestion(String qID, Connection conn) throws Exception {
+        //deleteQuestionHintLinks(qID, conn);
+        //deleteMultipleChoiceQuestionAnswers(qID, conn);
+        //deleteQuestion(qID, conn);
+    }
+
+    public void loadMultipleChoiceSurveyQuestionAnswers(MultiChoiceSurveyQuestion q, Connection conn) throws Exception {
+        StringBuffer query = new StringBuffer();
+        int qID = Integer.parseInt(q.getID());
+        query.append("SELECT * FROM MultiChoiceAnswers ");
+        query.append("WHERE QuestionID= '").append(qID).append("' ");
+        Statement stmt = conn.createStatement();
+        ResultSet res = stmt.executeQuery(query.toString());
+        if (res.next()) {
+            q.setAnswerChoiceA(res.getString("AnswerA"));
+            q.setAnswerChoiceB(res.getString("AnswerB"));
+            q.setAnswerChoiceC(res.getString("AnswerC"));
+            q.setAnswerChoiceD(res.getString("AnswerD"));
+        }
+        res.close();
+        stmt.close();
+    }
+
+    public void loadMultipleChoiceQuestionAnswers(MultipleChoiceQuestion q, Connection conn) throws Exception {
+        StringBuffer query = new StringBuffer();
+        int qID = Integer.parseInt(q.getID());
+        query.append("SELECT * FROM MultiChoiceAnswers ");
+        query.append("WHERE QuestionID= '").append(qID).append("' ");
+        Statement stmt = conn.createStatement();
+        ResultSet res = stmt.executeQuery(query.toString());
+        if (res.next()) {
+            q.setAnswerChoiceA(res.getString("AnswerA"));
+            q.setAnswerChoiceB(res.getString("AnswerB"));
+            q.setAnswerChoiceC(res.getString("AnswerC"));
+            q.setAnswerChoiceD(res.getString("AnswerD"));
+            q.setAnsChoiceAFeedback(res.getString("FeedbackA"));
+            q.setAnsChoiceBFeedback(res.getString("FeedbackB"));
+            q.setAnsChoiceCFeedback(res.getString("FeedbackC"));
+            q.setAnsChoiceDFeedback(res.getString("FeedbackD"));
+            q.setCorrectAnswer(res.getString("Correct"));
+        }
+        res.close();
+        stmt.close();
+    }
+
+    public void saveNewMultipleChoiceSurveyQuestionAnswers(MultiChoiceSurveyQuestion quest, Connection conn) throws Exception {
+        ResultSet rs = null;
+        PreparedStatement stmt = null;
+        try {
+            String q = "insert into MultiChoiceAnswers (QuestionID, AnswerA,AnswerB,AnswerC,AnswerD) values (?,?,?,?,?)";
+            stmt = conn.prepareStatement(q);
+            stmt.setInt(1, Integer.parseInt(quest.getID()));
+            stmt.setString(2, quest.getAnswerChoiceA());
+            stmt.setString(3, quest.getAnswerChoiceB());
+            stmt.setString(4, quest.getAnswerChoiceC());
+            stmt.setString(5, quest.getAnswerChoiceD());
+            stmt.execute();
+
+        }
+        finally {
+            if (rs != null)
+                rs.close();
+            if (stmt != null)
+                stmt.close();
+        }
+    }
+
+    public void saveNewMultipleChoiceQuestionAnswers(MultipleChoiceQuestion q, Connection conn) throws Exception {
+        StringBuffer query = new StringBuffer();
+        int qID = Integer.parseInt(q.getID());
+        query.append("INSERT INTO MultiChoiceAnswers (");
+        query.append("QuestionID, Correct, ");
+        query.append("AnswerA, AnswerB, AnswerC, AnswerD, ");
+        query.append("FeedbackA, FeedbackB, FeedbackC, FeedbackD)");
+        query.append(" VALUES(");
+        query.append("'").append(qID).append("', ");
+        query.append("'").append(q.getCorrectAnswer()).append("', ");
+        query.append("'").append(safeStringCheck(q.getAnswerChoiceA())).append("', ");
+        query.append("'").append(safeStringCheck(q.getAnswerChoiceB())).append("', ");
+        query.append("'").append(safeStringCheck(q.getAnswerChoiceC())).append("', ");
+        query.append("'").append(safeStringCheck(q.getAnswerChoiceD())).append("', ");
+        query.append("'").append(safeStringCheck(q.getAnsChoiceAFeedback())).append("', ");
+        query.append("'").append(safeStringCheck(q.getAnsChoiceBFeedback())).append("', ");
+        query.append("'").append(safeStringCheck(q.getAnsChoiceCFeedback())).append("', ");
+        query.append("'").append(safeStringCheck(q.getAnsChoiceDFeedback())).append("'");
+        query.append(")");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    public int saveMultipleChoiceSurveyQuestionAnswers(MultiChoiceSurveyQuestion qu, Connection conn) throws Exception {
+        PreparedStatement stmt = null;
+        try {
+            String q = "update MultiChoiceAnswers set AnswerA=?, AnswerB=?, AnswerC=?, AnswerD=? where QuestionID=?";
+            stmt = conn.prepareStatement(q);
+            stmt.setString(1, qu.getAnswerChoiceA());
+            stmt.setString(2, qu.getAnswerChoiceB());
+            stmt.setString(3, qu.getAnswerChoiceC());
+            stmt.setString(4, qu.getAnswerChoiceD());
+            stmt.setInt(5, Integer.parseInt(qu.getID()));
+            return stmt.executeUpdate();
+        } finally {
+            if (stmt != null)
+                stmt.close();
+        }
+    }
+
+    public void saveMultipleChoiceQuestionAnswers(MultipleChoiceQuestion q, Connection conn) throws Exception {
+        int qID = Integer.parseInt(q.getID());
+        StringBuffer query = new StringBuffer();
+        query.append("UPDATE MultiChoiceAnswers SET ");
+        query.append("Correct='").append(q.getCorrectAnswer()).append("', ");
+        query.append("AnswerA='").append(safeStringCheck(q.getAnswerChoiceA())).append("', ");
+        query.append("AnswerB='").append(safeStringCheck(q.getAnswerChoiceB())).append("', ");
+        query.append("AnswerC='").append(safeStringCheck(q.getAnswerChoiceC())).append("', ");
+        query.append("AnswerD='").append(safeStringCheck(q.getAnswerChoiceD())).append("', ");
+        query.append("FeedbackA='").append(safeStringCheck(q.getAnsChoiceAFeedback())).append("', ");
+        query.append("FeedbackB='").append(safeStringCheck(q.getAnsChoiceBFeedback())).append("', ");
+        query.append("FeedbackC='").append(safeStringCheck(q.getAnsChoiceCFeedback())).append("', ");
+        query.append("FeedbackD='").append(safeStringCheck(q.getAnsChoiceDFeedback())).append("'");
+        query.append(" WHERE QuestionID= '").append(qID).append("' ");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception ex) {
+            String msg = ex.getMessage();   //if(ex instanceof java.sql.SQLException &&
+            if (!msg.contains(sqlExceptionStr_))
+                throw ex;
+        }
+        stmt.close();
+    }
+
+    public void deleteMultipleChoiceQuestionAnswers(String QID, Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        StringBuffer query = new StringBuffer();
+        query.append("DELETE FROM MultiChoiceAnswers ");
+        query.append("WHERE QuestionID= '").append(qID).append("' ");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    public void deleteQuestion(String QID, Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        StringBuffer query = new StringBuffer();
+        query.append("DELETE FROM question ");
+        query.append("WHERE QuestionID= '").append(qID).append("' ");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    public void expungeQuestion(String qid, Connection conn, StringBuffer msg) throws Exception {
+        msg.append("Question " + qid + " deleted. ");
+        Vector hints = getAllHintIDsLinkedToQuestion(qid, conn);
+        if (hints.size() > 0)
+            msg.append("The question uses these hints: ");
+        Iterator itr = hints.iterator();
+        while (itr.hasNext()) {
+            String hid = (String) itr.next();
+            msg.append("<br>" + hid);
+        }
+        if (hints.size() > 0)
+            msg.append(".<br>   Make sure to delete these hints if no other question uses them.");
+        deleteAllQuestionToFrameworkLinks(qid, conn);
+        deleteMultipleChoiceQuestionAnswers(qid, conn);
+        // deleteQuestionShortAnswer();
+        deleteAllQuestionToModuleLinks(qid, conn);
+        // need to delete hint/question links
+        deleteQuestionHintLinks(qid, conn);
+        deleteQuestion(qid, conn);
+        // this may leave hints in the system that don't connect to any question
+    }
+
+
+    public Vector loadAllHintsWithQLinks(String QID, SystemInfo info, Connection conn) throws Exception {
+        boolean avoidQLink = true;
+        if (QID == null || QID.equals("")) //load all q/h links
+            avoidQLink = false;
+        Vector allFinalHints = new Vector();
+        Vector allHints = loadAllHints(info, conn);
+        for (int i = 0; i < allHints.size(); i++) {
+            Hint curH = (Hint) allHints.get(i);
+            Vector qIDs = getQuestionsLinkedToHint(curH.getID(), conn);
+            if (!avoidQLink || !qIDs.contains(QID)) {
+                curH.setQuestionLinks(qIDs);
+                allFinalHints.add(curH);
+            }
+        }
+        allHints = null;
+        return allFinalHints;
+    }
+
+    public Vector loadAllHints(SystemInfo info, Connection conn) throws Exception {
+        Vector allHints = new Vector();
+        String query = "SELECT * FROM Hint";
+        //TODO: create a query that returns order by #questions linked to
+        Statement stmt = conn.createStatement();
+        ResultSet res = stmt.executeQuery(query);
+        while (res.next()) {
+            Hint h = new Hint(res.getString("HintID"));
+            h.setQuery(res.getString("Ask"));
+            h.setResponse(res.getString("Response"));
+            h.setLevel(res.getString("Step"));
+            h.setCoachID(res.getString("CoachID"));
+            h.setStrategyID(res.getString("StrategyID"));
+            h.setAnsChoiceLink(res.getString("AnsLink"));
+            h.setCoachName(info.getCoachName(h.getCoachID()));
+            allHints.add(h);
+        }
+        res.close();
+        stmt.close();
+        return allHints;
+    }
+
+    public Hint loadHint(String hintID, SystemInfo info, Connection conn) throws Exception {
+        int hID = Integer.parseInt(hintID);
+        Hint h = new Hint(hintID);
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT * FROM Hint WHERE HintID =");
+        query.append("'").append(hID).append("' ");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        ResultSet res = stmt.executeQuery(qs);
+        while (res.next()) {
+            h.setQuery(res.getString("Ask"));
+            h.setResponse(res.getString("Response"));
+            h.setLevel(res.getString("Step"));
+            h.setCoachID(res.getString("CoachID"));
+            h.setStrategyID(res.getString("StrategyID"));
+            h.setAnsChoiceLink(res.getString("AnsLink"));
+            h.setAuthor(res.getString("AuthorID"));
+        }
+        res.close();
+        stmt.close();
+        h.setCoachName(info.getCoachName(h.getCoachID()));
+        h.setCoachImg(info.getCoachImg(h.getCoachID()));
+        return h;
+    }
+
+    //load all hints for a given qID
+    public String getLoadQuestionHintsQuery(String qID) {
+        StringBuffer query = new StringBuffer();
+        query.append("select Hint.HintID, Hint.Ask, Hint.Response, ");
+        query.append("Hint.Step, Hint.CoachID, Coach.Name, ");
+        query.append("Coach.Image, Hint.StrategyID, Hint.AnsLink, ");
+        query.append("Hint.AuthorID ");
+        query.append("from HintQuestionLinks, Hint, Coach ");
+        query.append("where HintQuestionLinks.QuestionID = '").append(qID).append("' ");
+        query.append("and HintQuestionLinks.HintID=Hint.HintID ");
+        query.append("and Hint.CoachID=Coach.CoachID ");
+        query.append("order by Hint.HintID ");
+        return query.toString();
+    }
+
+    public Hints loadAllHints(String QID, SystemInfo info, Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        Hints hints = new Hints();
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT * FROM Hint H, hintquestionlinks L ");
+        query.append("WHERE H.hintid=L.hintid AND L.questionid='");
+        query.append(qID).append("' ");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        ResultSet res = stmt.executeQuery(qs);
+        while (res.next()) {
+            Hint h = new Hint(res.getString("hintID"));
+            h.setQuery(res.getString("Ask"));
+            h.setResponse(res.getString("Response"));
+            h.setLevel(res.getString("Step"));
+            h.setCoachID(res.getString("CoachID"));
+            h.setStrategyID(res.getString("StrategyID"));
+            h.setAnsChoiceLink(res.getString("AnsLink"));
+            h.setAuthor(res.getString("AuthorID"));
+            h.setCoachName(info.getCoachName(h.getCoachID()));
+            h.setCoachImg(info.getCoachImg(h.getCoachID()));
+            hints.addHint(h);
+        }
+        res.close();
+        stmt.close();
+        return hints;
+    }
+
+    public void saveHint(Hint h, Connection conn) throws Exception {
+        int hID = Integer.parseInt(h.getID());
+        StringBuffer query = new StringBuffer();
+        query.append("UPDATE Hint SET ");
+        query.append("Ask='").append(safeStringCheck(h.getQuery())).append("', ");
+        query.append("Response='").append(safeStringCheck(h.getResponse())).append("', ");
+        query.append("Step='").append(h.getLevel()).append("', ");
+        query.append("CoachID='").append(h.getCoachID()).append("', ");
+        query.append("StrategyID='").append(h.getStrategyID()).append("',");
+        query.append("AnsLink='").append(h.getAnsChoiceLink()).append("'");
+        query.append(" WHERE HintID= '").append(hID).append("' ");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    public int saveNewHint(Hint h, Connection conn) throws Exception {
+        StringBuffer query = new StringBuffer();
+        query.append("INSERT INTO Hint (");
+        query.append("Ask, Response, Step, CoachID, StrategyID, AnsLink, AuthorID) ");
+        query.append(" VALUES ( ");
+        query.append("'").append(safeStringCheck(h.getQuery())).append("', ");
+        query.append("'").append(safeStringCheck(h.getResponse())).append("', ");
+        query.append("'").append(h.getLevel()).append("', ");
+        query.append("'").append(h.getCoachID()).append("', ");
+        query.append("'").append(h.getStrategyID()).append("',");
+        query.append("'").append(h.getAnsChoiceLink()).append("',");
+        query.append("'").append(h.getAuthor()).append("')");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+        int hID = getInsertionID("HintID", "Hint", conn);
+        return hID;
+    }
+
+    public Hints getAllHints(String QID, Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        Hints hints = new Hints();
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT * FROM Hint WHERE HintID IN (");
+        query.append("SELECT HintID FROM HintQuestionLinks WHERE QuestionID='").append(qID).append("'");
+        query.append(") ORDER BY Level");
+        ResultSet res = stmt.executeQuery(query.toString());
+        while (res.next()) {
+            Hint h = new Hint(res.getString("HintID"));
+            h.setQuery(res.getString("Ask"));
+            h.setResponse(res.getString("Response"));
+            String level = res.getString("Step");
+            h.setLevel(level);
+            h.setCoachID(res.getString("CoachID"));
+            h.setStrategyID(res.getString("StrategyID"));
+            h.setAnsChoiceLink(res.getString("AnsLink"));
+            hints.addHint(h);
+        }
+        res.close();
+        stmt.close();
+        return hints;
+    }
+
+    public Vector getAllHintsAtLevel(String QID, String level, Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        Vector hints = new Vector();
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT * FROM Hint WHERE HintID IN (");
+        query.append("SELECT HintID FROM HintQuestionLinks WHERE QuestionID='").append(qID).append("'");
+        query.append(") ORDER BY Level");
+        ResultSet res = stmt.executeQuery(query.toString());
+        while (res.next()) {
+            Hint h = new Hint(res.getString("HintID"));
+            h.setQuery(res.getString("Ask"));
+            h.setResponse(res.getString("Response"));
+            String lev = res.getString("Step");
+            h.setLevel(level);
+            h.setCoachID(res.getString("CoachID"));
+            h.setStrategyID(res.getString("StrategyID"));
+            h.setAnsChoiceLink(res.getString("AnsLink"));
+            if (level.equals(lev))
+                hints.add(h);
+        }
+        res.close();
+        stmt.close();
+        return hints;
+    }
+
+    //create a link between a standard and a question
+    protected void linkQuestionToFramework(String QID, String std, Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        Statement stmt = conn.createStatement();
+        String qs = "INSERT INTO QuestionFrameworkLinks (QuestionID, FrameworkStd) VALUES (" + qID + ", " + safeStringCheck(std) + ")";
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    //delete a link between a standard and a question
+    protected void deleteQuestionToFrameworkLink(String QID, String std, Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        Statement stmt = conn.createStatement();
+        String qs = "DELETE From QuestionFrameworkLinks WHERE QuestionID='" + qID + "' AND FrameworkStd='" + safeStringCheck(std) + "'";
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    //delete all links between a question and its standards
+    protected void deleteAllQuestionToFrameworkLinks(String QID, Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        Statement stmt = conn.createStatement();
+        String qs = "DELETE From QuestionFrameworkLinks WHERE QuestionID='" + qID + "'";
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    //create a link between a hint and a question
+    public void linkNewHintToQuestion(String QID, String HID, Connection conn) throws Exception {
+        if (hintQuestionLinkExists(QID, HID, conn)) {
+            throw new Exception("A link between question " + QID + " and hint " + HID + " already exists.");
+        }
+        int qID = Integer.parseInt(QID);
+        int hID = Integer.parseInt(HID);
+        Statement stmt = conn.createStatement();
+        String qs = "INSERT INTO HintQuestionLinks (QuestionID, HintID) VALUES (" + qID + ", " + hID + ")";
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    public boolean hintQuestionLinkExists(String QID, String HID, Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        int hID = Integer.parseInt(HID);
+        boolean exists = false;
+        Statement stmt = conn.createStatement();
+        String qs = "Select * FROM HintQuestionLinks WHERE QuestionID='" + qID + "' AND HintID='" + hID + "'";
+        ResultSet res = stmt.executeQuery(qs);
+        if (res.next())
+            exists = true;
+        else
+            exists = false;
+        res.close();
+        stmt.close();
+        return exists;
+    }
+
+    //create a link between a hint and a question
+    public void linkHintToQuestion(String QID, String HID, Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        int hID = Integer.parseInt(HID);
+        //check for existing link
+        Statement stmt = conn.createStatement();
+        String qs = "INSERT INTO HintQuestionLinks (QuestionID, HintID) VALUES (" + qID + ", " + hID + ")";
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    //create a link between a hint and a question
+    public void linkQuestionToModule(String QID, String MID, Connection conn) throws Exception {
+        //the question must be active
+        boolean isActive = isQuestionActive(QID, conn);
+        if (!isActive)
+            throw new Exception("You are attempting to link an inactive question to a module. Go to the question" +
+                    " edit page and click the \"Ready Status\" check box and then link to the module.");
+        //check for existing link
+        int qID = Integer.parseInt(QID);
+        int mID = Integer.parseInt(MID);
+        Statement stmt = conn.createStatement();
+        String qs = "INSERT INTO ModQuestionLinks (ModuleID, QuestionID) VALUES (" + mID + ", " + qID + ")";
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    //create a link between modules
+    public void addModModuleLink(String CMID, String PMID, Connection conn) throws Exception {
+        int cmID = Integer.parseInt(CMID);
+        int pmID = Integer.parseInt(PMID);
+        //check for existing link
+        Statement stmt = conn.createStatement();
+        String qs = "INSERT INTO ModModuleLinks (ParentModID, ChildModID) VALUES (" + pmID + ", " + cmID + ")";
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    //create a link between modules
+    public void addModCourseLink(String MID, String CID, Connection conn) throws Exception {
+        int mID = Integer.parseInt(MID);
+        int cID = Integer.parseInt(CID);
+        //check for existing link
+        Statement stmt = conn.createStatement();
+        String qs = "INSERT INTO ModCourseLinks (ModuleID, CourseID) VALUES (" + mID + ", " + cID + ")";
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    //create a link between a hint and a question
+    public void deleteQuestionToModuleLink(String QID, String MID, Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        int mID = Integer.parseInt(MID);
+        //check for existing link
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("DELETE FROM ModQuestionLinks WHERE ModuleID='").append(mID).append("'");
+        query.append(" AND QuestionID='").append(qID).append("'");
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    //deleting a question
+    public void deleteAllQuestionToModuleLinks(String QID, Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("DELETE FROM ModQuestionLinks WHERE ");
+        query.append(" QuestionID='").append(qID).append("'");
+        try {
+            stmt.executeUpdate(query.toString());
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    //deleting all links to a particular hint
+    public void deleteHintQuestionLinks(String HID, Connection conn) throws Exception {
+        int hID = Integer.parseInt(HID);
+        Statement stmt = conn.createStatement();
+        String qs = "DELETE FROM HintQuestionLinks WHERE HintID=" + hID;
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    //deleting all links to a particular question
+    public void deleteQuestionHintLinks(String QID, Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        Statement stmt = conn.createStatement();
+        String qs = "DELETE FROM HintQuestionLinks WHERE QuestionID=" + qID;
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    public boolean hasQuestionHintLinks(String HID, Connection conn) throws Exception {
+        int hID = Integer.parseInt(HID);
+        boolean linked = false;
+        Statement stmt = conn.createStatement();
+        String qs = "SELECT * FROM HintQuestionLinks WHERE HintID=" + hID;
+        ResultSet res = stmt.executeQuery(qs);
+        while (res.next())
+            linked = true;
+        res.close();
+        stmt.close();
+        return linked;
+    }
+
+    /*deletes the links to hints first
+    public void deleteQuestion(String qID, Connection conn)throws Exception {
+        deleteQuestionHintLinks(qID, conn);
+        deleteAllQuestionToModuleLinks(qID, conn);
+        Statement stmt=conn.createStatement();
+        String qs="DELETE FROM Question WHERE QuestionID="+qID;
+        try{
+          stmt.executeQuery(qs);}
+          catch(Exception sex) {
+            String msg=sex.getMessage();
+            if(!msg.contains(sqlExceptionStr_))
+               throw sex;
+           }
+        stmt.close();
+    }
+ */
+    //get all questions liked to the hint
+    public Vector getQuestionsLinkedToHint(String HID, Connection conn) throws Exception {
+        int hID = Integer.parseInt(HID);
+        Vector questionIDs = new Vector();
+        Statement stmt = conn.createStatement();
+        ResultSet res = stmt.executeQuery("SELECT QuestionID FROM HintQuestionLinks WHERE HintID='" + hID + "'");
+        while (res.next()) {
+            questionIDs.add(res.getString("QuestionID"));
+        }
+        res.close();
+        stmt.close();
+        return questionIDs;
+    }
+
+    public boolean modModuleLinkExists(String PMID, String CMID,
+                                       Connection conn) throws Exception {
+        int pmID = Integer.parseInt(PMID);
+        int cmID = Integer.parseInt(CMID);
+        boolean hasit = false;
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT ParentModID FROM ModModuleLinks WHERE ParentModID='");
+        query.append(pmID).append("'");
+        query.append(" AND ChildModID='").append(cmID).append("'");
+        ResultSet res = stmt.executeQuery(query.toString());
+        if (res.next()) {
+            hasit = true;
+        }
+        res.close();
+        stmt.close();
+        return hasit;
+    }
+
+    public Vector getModModuleLinks(String CMID, Connection conn) throws Exception {
+        int cmID = Integer.parseInt(CMID);
+        Vector parentIDs = new Vector();
+        Statement stmt = conn.createStatement();
+        ResultSet res = stmt.executeQuery("SELECT ParentModID FROM ModModuleLinks WHERE ChildModID='" + cmID + "'");
+        while (res.next()) {
+            parentIDs.add(res.getString("ParentModID"));
+        }
+        res.close();
+        stmt.close();
+        return parentIDs;
+    }
+
+    public Vector getModuleIDsInCourse(String CID, Connection conn) throws Exception {
+        int cID = Integer.parseInt(CID);
+        Vector modIDs = new Vector();
+        Statement stmt = conn.createStatement();
+        ResultSet res = stmt.executeQuery("SELECT ModuleID FROM ModCourseLinks WHERE CourseID='" + cID + "'");
+        while (res.next()) {
+            modIDs.add(res.getString("ModuleID"));
+        }
+        res.close();
+        stmt.close();
+        return modIDs;
+    }
+
+    public Vector getCourseIDsForModule(String MID, Connection conn) throws Exception {
+        int mID = Integer.parseInt(MID);
+        Vector cIDs = new Vector();
+        Statement stmt = conn.createStatement();
+        ResultSet res = stmt.executeQuery("SELECT CourseID FROM ModCourseLinks WHERE ModuleID='" + mID + "'");
+        while (res.next()) {
+            cIDs.add(res.getString("CourseID"));
+        }
+        res.close();
+        stmt.close();
+        return cIDs;
+    }
+
+    //get all hints liked to the question
+    public Vector getAllHintIDsLinkedToQuestion(String QID, Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        Vector hintIDs = new Vector();
+        Statement stmt = conn.createStatement();
+        ResultSet res = stmt.executeQuery("SELECT HintID FROM HintQuestionLinks WHERE QuestionID='" + qID + "'");
+        while (res.next()) {
+            hintIDs.add(res.getString("HintID"));
+        }
+        res.close();
+        stmt.close();
+        return hintIDs;
+    }
+
+    public Hints loadAllQuestionHints(Question q, Connection conn) throws Exception {
+        Hints hints = new Hints();
+        String query = getLoadQuestionHintsQuery(q.getID());
+        Statement stmt = conn.createStatement();
+        ResultSet res = stmt.executeQuery(query);
+        while (res.next()) {
+            Hint h = new Hint(res.getString("HintID"));
+            h.setQuery(res.getString("Ask"));
+            h.setResponse(res.getString("Response"));
+            h.setLevel(res.getString("Step"));
+            h.setCoachID(res.getString("CoachID"));
+            h.setCoachName(res.getString("Name"));
+            h.setCoachImg(res.getString("Image"));
+            ;
+            h.setStrategyID(res.getString("StrategyID"));
+            h.setAnsChoiceLink(res.getString("AnsLink"));
+            hints.addHint(h);
+        }
+        res.close();
+        stmt.close();
+        return hints;
+    }
+
+    //deleting a hint-question link only
+    public void deleteHintQuestionLink(String QID, String HID, Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        int hID = Integer.parseInt(HID);
+        Statement stmt = conn.createStatement();
+        String qs = "DELETE FROM HintQuestionLinks WHERE QuestionID=" + qID + " AND HintID=" + hID;
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    public void deleteModule(String mID, Connection conn) throws Exception {
+
+        StringBuffer query = new StringBuffer();
+        query.append("DELETE FROM Module");
+        query.append(" WHERE ModuleID= '").append(mID).append("'");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+        deleteModQuestionLinks(mID, conn);
+
+    }
+
+    public void deleteHint(String hID, Connection conn) throws Exception {
+
+        if (hasQuestionHintLinks(hID, conn))
+            throw new Exception("This hint is linked to questions. Delete these links first before deleting this hint.");
+        StringBuffer query = new StringBuffer();
+        query.append("DELETE FROM Hint");
+        query.append(" WHERE ");
+        query.append("HintID= '").append(hID).append("'");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+
+    }
+
+    public static int getInsertionID(String idFieldStr, String table,
+                                     Connection conn) throws Exception {
+        int ID = -1;
+        Statement stmt = conn.createStatement();
+        ResultSet results = stmt.executeQuery("SELECT Max(" + idFieldStr + ") as MaxID FROM " + table);
+        if (results.next() != false)
+            ID = results.getInt("MaxID");
+        results.close();
+        stmt.close();
+        return ID;
+    }
+
+    /*
+insert into StudentFrameworkData (UserID,f4D5,f4D4,f4D3,f4D2,f4D1,f4M5,f4M4,f4M3,f4M2,
+f4M1,f4G9,f4G8,f4G7,f4G6,f4G5,f4G4,f4G3,f4G2,f4G1,f4P6,f4P5,f4P4,f4P3,f4P2,f4P1,f4N18,
+f4N17,f4N16,f4N15,f4N14,f4N13, f4N12,f4N11,f4N10,f4N9,f4N8,f4N7,f4N6,f4N5,f4N4,f4N3,f4N2,
+f4N1) values ('2','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5',
+'0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5',
+'0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5','0.5',
+'0.5')
+
+*/
+
+    public double[] getStudentSkillData(String SID, int skillsDataSize,
+                                        Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        double[] skillData = new double[skillsDataSize];
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT f4N1,f4N2,f4N3,f4N4,f4N5,f4N6,f4N7,f4N8,f4N9,f4N10,f4N11,f4N12,");
+        query.append("f4N13,f4N14,f4N15,f4N16,f4N17,f4N18,f4P1,f4P2,f4P3,f4P4,f4P5,f4P6,");
+        query.append("f4G1,f4G2,f4G3,f4G4,f4G5,f4G6,f4G7,f4G8,f4G9,f4M1,f4M2,f4M3,f4M4,");
+        query.append("f4M5,f4D1,f4D2,f4D3,f4D4,f4D5,f4D6 from StudentFrameworkData ");
+        query.append("where UserID='").append(sID).append("'");
+        res = stmt.executeQuery(query.toString());
+        if (res.next()) {
+            for (int j = 0; j < skillsDataSize; j++)
+                skillData[j] = res.getDouble(standardsDBNames_[j]);
+        }
+        res.close();
+        stmt.close();
+        return skillData;
+    }
+
+    public double[] getStudentAlphaData(String SID, int skillsDataSize,
+                                        Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        double[] skillData = new double[skillsDataSize];
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT a4N1,a4N2,a4N3,a4N4,a4N5,a4N6,a4N7,a4N8,a4N9,a4N10,a4N11,a4N12,");
+        query.append("a4N13,a4N14,a4N15,a4N16,a4N17,a4N18,a4P1,a4P2,a4P3,a4P4,a4P5,a4P6,");
+        query.append("a4G1,a4G2,a4G3,a4G4,a4G5,a4G6,a4G7,a4G8,a4G9,a4M1,a4M2,a4M3,a4M4,");
+        query.append("a4M5,a4D1,a4D2,a4D3,a4D4,a4D5,a4D6 from StudentFrameworkData ");
+        query.append("where UserID='").append(sID).append("'");
+        res = stmt.executeQuery(query.toString());
+        if (res.next()) {
+            for (int j = 0; j < skillsDataSize; j++)
+                skillData[j] = res.getDouble(alphaDBNames_[j]);
+        }
+        res.close();
+        stmt.close();
+        return skillData;
+    }
+
+    public double[] getStudentBetaData(String SID, int skillsDataSize,
+                                       Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        double[] skillData = new double[skillsDataSize];
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT b4N1,b4N2,b4N3,b4N4,b4N5,b4N6,b4N7,b4N8,b4N9,b4N10,b4N11,b4N12,");
+        query.append("b4N13,b4N14,b4N15,b4N16,b4N17,b4N18,b4P1,b4P2,b4P3,b4P4,b4P5,b4P6,");
+        query.append("b4G1,b4G2,b4G3,b4G4,b4G5,b4G6,b4G7,b4G8,b4G9,b4M1,b4M2,b4M3,b4M4,");
+        query.append("b4M5,b4D1,b4D2,b4D3,b4D4,b4D5,b4D6 from StudentFrameworkData ");
+        query.append("where UserID='").append(sID).append("'");
+        res = stmt.executeQuery(query.toString());
+        if (res.next()) {
+            for (int j = 0; j < skillsDataSize; j++)
+                skillData[j] = res.getDouble(betaDBNames_[j]);
+        }
+        res.close();
+        stmt.close();
+        return skillData;
+    }
+
+    public double[] getMeanModelData(int skillsDataSize,
+                                     Connection conn) throws Exception {
+        double[] skillData = new double[skillsDataSize];
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT f4N1,f4N2,f4N3,f4N4,f4N5,f4N6,f4N7,f4N8,f4N9,f4N10,f4N11,f4N12,");
+        query.append("f4N13,f4N14,f4N15,f4N16,f4N17,f4N18,f4P1,f4P2,f4P3,f4P4,f4P5,f4P6,");
+        query.append("f4G1,f4G2,f4G3,f4G4,f4G5,f4G6,f4G7,f4G8,f4G9,f4M1,f4M2,f4M3,f4M4,");
+        query.append("f4M5,f4D1,f4D2,f4D3,f4D4,f4D5,f4D6 from MeanModel ");
+        res = stmt.executeQuery(query.toString());
+        if (res.next()) {
+            for (int j = 0; j < skillsDataSize; j++)
+                skillData[j] = res.getDouble(standardsDBNames_[j]);
+        }
+        res.close();
+        stmt.close();
+        return skillData;
+    }
+
+    public void updateStudentModelData(String SID, String[] stdNames,
+                                       double[] standardsData, Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        int uID = -1;
+        StringBuffer query = new StringBuffer();
+        query.append("UPDATE StudentFrameworkData SET ");
+        for (int i = 0; i < stdNames.length; i++) {
+            query.append(stdNames[i]).append("=").append(standardsData[i]);
+            if (i != stdNames.length - 1)
+                query.append(", ");
+        }
+        query.append(" WHERE UserID= '").append(sID).append("' ");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+
+    public void saveStudentModuleStartTime(String SID, String MID, String modStartTime,
+                                           Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        int mID = Integer.parseInt(MID);
+        StringBuffer query = new StringBuffer();
+        query.append("INSERT INTO StudentModuleData (");
+        query.append("UserID, ModID, ModStartTime) ");
+        query.append(" VALUES ( ");
+        query.append("'").append(sID).append("', ");
+        query.append("'").append(mID).append("', ");
+        query.append("'").append(modStartTime).append("')");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    //return null if no start time
+    public String getStudentModuleStartTime(String SID, String MID, Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        int mID = Integer.parseInt(MID);
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT ModStartTime FROM StudentModuleData WHERE UserID='");
+        query.append(sID).append("' AND ModID='").append(mID).append("'");
+        res = stmt.executeQuery(query.toString());
+        String start = null;
+        if (res.next()) {
+            start = res.getString("ModStartTime");
+        }
+        res.close();
+        stmt.close();
+        return start;
+    }
+
+    public void deleteStudentModuleStartTime(String SID, String MID, Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        int mID = Integer.parseInt(MID);
+        Statement stmt = conn.createStatement();
+        StringBuffer query = new StringBuffer();
+        query.append("DELETE FROM StudentModuleData WHERE UserID='");
+        query.append(sID).append("' AND ModID='").append(mID).append("'");
+        try {
+            stmt.executeUpdate(query.toString());
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+
+    public boolean isQuestionActive(String QID, Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        boolean isActive = false;
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        String query = "SELECT Ready from Question WHERE QuestionID='" + qID + "'";
+        res = stmt.executeQuery(query);
+        if (res.next()) {
+            isActive = res.getBoolean("Ready");
+        }
+        res.close();
+        stmt.close();
+        return isActive;
+    }
+
+
+    //RESPONSE LOG
+    public void updateResponseLog(String questionID, String modID,
+                                  String modType,
+                                  String userID, int modIndex,
+                                  long ansTS, String ansString,
+                                  boolean isCorrect, int ordinality,
+                                  Connection conn) throws Exception {
+        int qID = Integer.parseInt(questionID);
+        int uID = Integer.parseInt(userID);
+        int mID = Integer.parseInt(modID);
+        StringBuffer query = new StringBuffer();
+        query.append("INSERT INTO ResponseLog (");
+        query.append("QuestionID, ModID, ModType, UserID, ModIndex, ResponseTS, ");
+        query.append("ResponseString, Correct, Ordinality)");
+        query.append(" VALUES ( ");
+        query.append("'").append(qID).append("', ");
+        query.append("'").append(mID).append("', ");
+        query.append("'").append(safeStringCheck(modType)).append("', ");
+        query.append("'").append(uID).append("', ");
+        query.append("'").append(modIndex).append("', ");
+        query.append("'").append(ReportDataUtils.getTimestampString(ansTS)).append("', ");
+        query.append("'").append(safeStringCheck(ansString)).append("', ");
+        if (isCorrect)
+            query.append("'").append(1).append("', ");
+        else
+            query.append("'").append(0).append("', ");
+        query.append("'").append(ordinality).append("') ");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    //get the mod index for the last entry in the ResponseLog. returns -1 if no entry
+    public int getCurrentResponseLogEntryIndex(String sID, Connection conn) throws Exception {
+        int modIndex = -1;
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT ModIndex from ResponseLog ");
+        query.append("WHERE UserID='").append(sID).append("' ");
+        query.append("AND ResponseTS = ");
+        query.append("(SELECT max(ResponseTS) from ResponseLog ");
+        query.append("WHERE UserID='").append(sID).append("')");
+        res = stmt.executeQuery(query.toString());
+        if (res.next()) {
+            modIndex = res.getInt("ModIndex");
+        }
+        res.close();
+        stmt.close();
+        return modIndex;
+    }
+
+    //HINT LOG
+    public void initHintLog(String HID, String QID, String SID,
+                            String COACHID, String MID, String mType,
+                            int step, long qStartTS,
+                            long hintTS, int ord,
+                            Connection conn) throws Exception {
+        int qID = Integer.parseInt(QID);
+        int sID = Integer.parseInt(SID);
+        int mID = Integer.parseInt(MID);
+        int hID = Integer.parseInt(HID);
+        int coachID = Integer.parseInt(COACHID);
+        StringBuffer query = new StringBuffer();
+        query.append("INSERT INTO HintLog (");
+        query.append("HintID, QuestionID, UserID, CoachID, ModID, ModType, Step, ");
+        query.append("QuestionStartTS, HintTS, Ordinality)");
+
+        query.append(" VALUES ( ");
+        query.append("'").append(hID).append("', ");
+        query.append("'").append(qID).append("', ");
+        query.append("'").append(sID).append("', ");
+        query.append("'").append(coachID).append("', ");
+        query.append("'").append(mID).append("', ");
+        query.append("'").append(safeStringCheck(mType)).append("', ");
+        query.append("'").append(step).append("', ");
+        query.append("'").append(ReportDataUtils.getTimestampString(qStartTS)).append("', ");
+        query.append("'").append(ReportDataUtils.getTimestampString(hintTS)).append("', ");
+        query.append("'").append(ord).append("') ");
+
+
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    public int getCurrentHintLogEntryOrd(String SID, Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        int ord = -1;
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("select MAX(Ordinality) as Ord from HintLog ");
+        query.append("where UserID='").append(sID).append("'");
+        res = stmt.executeQuery(query.toString());
+        if (res.next()) {
+            ord = res.getInt("Ord");
+        }
+        res.close();
+        stmt.close();
+        return ord;
+    }
+
+    /* get answered question IDs for each mod
+       the TreeMap has key: mID  val:  Vector of DataTuples:
+       first= qID, second=Correct, third=responseTime, fourth=modType  */
+    public void getQuestionResponseDataForEachMod(String SID, TreeMap modData, Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT ModID, ModType, QuestionID, Correct, ResponseTS from ResponseLog ");
+        query.append("WHERE UserID='").append(sID).append("' ");
+        query.append("AND ResponseString IS NOT NULL ");
+        query.append("AND ResponseString !='").append(FormalitySubsystem.questionStartString).append("' ");
+        query.append("GROUP BY ModID, QuestionID, ModType, Correct, ResponseTS ");
+        query.append("ORDER BY ResponseTS ");
+        res = stmt.executeQuery(query.toString());
+        while (res.next()) {
+            String mID = res.getString("ModID");
+            String mType = res.getString("ModType");
+            String qID = res.getString("QuestionID");
+            boolean correct = res.getBoolean("Correct");
+            String responseTS = res.getString("ResponseTS");
+            DataTuple dt = new DataTuple();
+            dt.setFirst(qID);
+            dt.setSecond(new Boolean(correct));
+            dt.setThird(responseTS);
+            dt.setFourth(mType);
+            Vector modQData = (Vector) modData.get(mID);
+            if (modQData == null) { //this modID is not in the map
+                modQData = new Vector();
+                modQData.add(dt);
+                modData.put(mID, modQData);
+            } else {
+                modQData.add(dt);
+            }
+        }
+        res.close();
+        stmt.close();
+    }
+
+    /* get answered question IDs for a mod
+       the TreeMap has key: mID  val:  Vector of DataTuples: first= qID, second=Correct*/
+    public void getModQuestionResponseData(String SID, String modID, TreeMap modData, Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT QuestionID, Correct, ResponseTS from ResponseLog ");
+        query.append("WHERE UserID='").append(sID).append("' ");
+        query.append("AND ModID='").append(modID).append("' ");
+        query.append("AND ResponseString IS NOT NULL ");
+        query.append("AND ResponseString !='").append(FormalitySubsystem.questionStartString).append("' ");
+        query.append("ORDER BY ResponseTS ");
+        res = stmt.executeQuery(query.toString());
+        while (res.next()) {
+            String qID = res.getString("QuestionID");
+            boolean correct = res.getBoolean("Correct");
+            String responseTS = res.getString("ResponseTS");
+            DataTuple dt = new DataTuple();
+            dt.setFirst(qID);
+            dt.setSecond(new Boolean(correct));
+            dt.setThird(responseTS);
+            Vector modQData = (Vector) modData.get(modID);
+            if (modQData == null) { //this modID is not in the map
+                modQData = new Vector();
+                modQData.add(dt);
+                modData.put(modID, modQData);
+            } else {
+                modQData.add(dt);
+            }
+        }
+        res.close();
+        stmt.close();
+    }
+
+    /* get the question id for the last question answered for a student for a module- return -1 if not worked */
+    public int getLastQuestionIDAnswered(String SID, String MID, Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        int mID = Integer.parseInt(MID);
+        int qID = -1;
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT Max(ResponseTS)as LastID FROM ResponseLog ");
+        query.append("WHERE UserID='").append(sID).append("' ");
+        query.append("AND ModID='").append(mID).append("' ");
+        query.append("AND ResponseString IS NOT NULL ");
+        query.append("AND ResponseString !='").append(FormalitySubsystem.questionStartString).append("' ");
+        res = stmt.executeQuery(query.toString());
+        if (res.next()) {
+            qID = res.getInt("LastID");
+        }
+        res.close();
+        stmt.close();
+        return qID;
+    }
+
+    /* get the total # of ACTIVE questions linked to this standard*/
+    public int getQCountLinkedToAStd(String stdID, Connection conn) throws Exception {
+        int ct = 0;
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT count(QuestionID)as Qct from Question ");
+        query.append("WHERE Std1='").append(safeStringCheck(stdID)).append("' AND Ready=1");
+        res = stmt.executeQuery(query.toString());
+        if (res.next()) {
+            ct = res.getInt("Qct");
+        }
+        res.close();
+        stmt.close();
+        return ct;
+    }
+
+    /* get the total # of questions linked to this standard that are linked to a module*/
+    public int getQCountLinkedToAStdAndAMod(String stdID, Connection conn) throws Exception {
+        int ct = 0;
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("SELECT count(QuestionID)as Qct from Question ");
+        query.append("WHERE Std1='").append(safeStringCheck(stdID)).append("' ");
+        query.append("and QuestionID in (select QuestionID from ModQuestionLinks)");
+        res = stmt.executeQuery(query.toString());
+        if (res.next()) {
+            ct = res.getInt("Qct");
+        }
+        res.close();
+        stmt.close();
+        return ct;
+    }
+
+    public String loadModuleScoreboard(String SID, Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        String data = null;
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("select ModRecord from UserTable ");
+        query.append("where UserID='").append(sID).append("' ");
+        res = stmt.executeQuery(query.toString());
+        boolean ok = false;
+        if (res.next()) {
+            data = res.getString("ModRecord");
+            if (data == null)
+                data = " ";
+        }
+        res.close();
+        stmt.close();
+        return data;
+    }
+
+    public void updateModuleScoreboard(String SID, String data, Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("update Usertable set modrecord='").append(safeStringCheck(data)).append("' ");
+        query.append("where UserID='").append(sID).append("' ");
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    public void resetModuleScoreboard(String SID, Connection conn) throws Exception {
+        int sID = Integer.parseInt(SID);
+        Statement stmt = conn.createStatement();
+        ResultSet res;
+        StringBuffer query = new StringBuffer();
+        query.append("update Usertable set modrecord=' ' ");
+        query.append("where UserID='").append(sID).append("' ");
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    public void updateModuleScoreHintCount(String UID, String MID, String QID,
+                                           int hint, Connection conn) throws Exception {
+        int uID = Integer.parseInt(UID);
+        int mID = Integer.parseInt(MID);
+        int qID = Integer.parseInt(QID);
+        StringBuffer query = new StringBuffer();
+        query.append("UPDATE ModuleScore SET hints='").append(hint).append("' ");
+        query.append("WHERE userID= '").append(uID).append("' ");
+        query.append("AND modID='").append(mID).append("' ");
+        query.append("AND qID='").append(qID).append("'");
+        Statement stmt = conn.createStatement();
+        String qs = query.toString();
+        try {
+            stmt.executeUpdate(qs);
+        }
+        catch (Exception sex) {
+            String msg = sex.getMessage();
+            if (!msg.contains(sqlExceptionStr_))
+                throw sex;
+        }
+        stmt.close();
+    }
+
+    public byte[] getQuestionAudio(Connection conn, int qid, String lang) throws SQLException {
+        ResultSet rs = null;
+        PreparedStatement stmt = null;
+        try {
+            String q;
+            if (lang.equals("eng"))
+                q = "select audio from Question where QuestionId=?";
+            else q = "select spanishAudio from Question where QuestionId=?";
+            stmt = conn.prepareStatement(q);
+            stmt.setInt(1, qid);
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                byte[] c = rs.getBytes(1);
+                return c;
+            }
+
+        }
+        finally {
+            if (stmt != null)
+                stmt.close();
+            if (rs != null)
+                rs.close();
+        }
+        return null;
+    }
+
+    public int setUserProblemStartTime(String userID, Long curTS, Connection conn) throws SQLException {
+        PreparedStatement stmt = null;
+        try {
+            String q = "update usertable set lastProbStartTime=? where userId=?";
+            stmt = conn.prepareStatement(q);
+            if (curTS != null)
+                stmt.setLong(1, curTS);
+            else stmt.setNull(1, Types.INTEGER);
+            stmt.setInt(2, Integer.parseInt(userID));
+            return stmt.executeUpdate();
+        } finally {
+            if (stmt != null)
+                stmt.close();
+        }
+    }
+
+    public Long getUserProblemStartTime(String userId, Connection conn) throws SQLException {
+        ResultSet rs = null;
+        PreparedStatement stmt = null;
+        try {
+            String q = "select lastProbStartTime from usertable where userId=?";
+            stmt = conn.prepareStatement(q);
+            stmt.setInt(1, Integer.parseInt(userId));
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                Long t = rs.getLong(1);
+                if (rs.wasNull())
+                    return null;
+                else return t;
+            }
+        }
+        finally {
+            if (stmt != null)
+                stmt.close();
+            if (rs != null)
+                rs.close();
+        }
+        return new Long(0);
+    }
+
+    public static void main(String[] args) {
+        long t = System.currentTimeMillis();
+        Timestamp ts = new Timestamp(t);
+        long t2 = ts.getTime();
+        System.out.println(t == t2);
+    }
+
+    public Hint getHint(Connection conn, String hID) throws SQLException {
+        ResultSet rs = null;
+        PreparedStatement stmt = null;
+        try {
+            String q = "select * from hint where hintID=?";
+            stmt = conn.prepareStatement(q);
+            stmt.setInt(1, Integer.parseInt(hID));
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                String ask = rs.getString("Ask");
+                String resp = rs.getString("Response");
+                int step = rs.getInt("Step");
+                int coachId = rs.getInt("coachID");
+                int stratId = rs.getInt("strategyID");
+                String ansLink = rs.getString("AnsLink");
+                int authID = rs.getInt("authorID");
+                return new Hint(hID, Integer.toString(step), Integer.toString(coachId), Integer.toString(stratId), ansLink, ask, resp, Integer.toString(authID));
+            }
+        }
+        finally {
+            if (stmt != null)
+                stmt.close();
+            if (rs != null)
+                rs.close();
+        }
+        return null;
+    }
+
+    public int updateEventHintLevel(Connection conn, int eventID, String hintLevel) throws SQLException {
+        PreparedStatement stmt = null;
+        try {
+            String q = "update eventlog set hintstep=? where id=?";
+            stmt = conn.prepareStatement(q);
+            stmt.setInt(1, Integer.parseInt(hintLevel));
+            stmt.setInt(2, eventID);
+            return stmt.executeUpdate();
+        } finally {
+            if (stmt != null)
+                stmt.close();
+        }
+    }
+
+    /**
+     * Return the last response to a question (used for survey questions only)
+     * @param conn
+     * @param userID
+     * @param qid
+     * @return
+     * @throws SQLException
+     */
+    public String getSurveyQuestionStudentLastResponse(Connection conn, String userID, String qid) throws SQLException {
+        ResultSet rs=null;
+        PreparedStatement stmt=null;
+        try {
+            String q = "select ResponseString from responselog where userid=? and questionid=? order by ResponseTS DESC";
+            stmt = conn.prepareStatement(q);
+            stmt.setInt(1,Integer.parseInt(userID));
+            stmt.setInt(2,Integer.parseInt(qid));
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString(1);
+            }
+            else return null;
+        }
+        finally {
+            if (stmt != null)
+                stmt.close();
+            if (rs != null)
+                rs.close();
+        }
+    }
+}

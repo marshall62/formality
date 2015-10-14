@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<project name="4mality" default="all">
+  
+  
+  <property file="4mality.properties"/>
+  <!-- Uncomment the following property if no tests compilation is needed -->
+  <!-- 
+  <property name="skip.tests" value="true"/>
+   -->
+  
+  <!-- Compiler options -->
+  
+  <property name="compiler.debug" value="on"/>
+  <property name="compiler.generate.no.warnings" value="off"/>
+  <property name="compiler.args" value=""/>
+  <property name="compiler.max.memory" value="128m"/>
+  <patternset id="ignored.files">
+    <exclude name="**/CVS/**"/>
+    <exclude name="**/SCCS/**"/>
+    <exclude name="**/RCS/**"/>
+    <exclude name="**/rcs/**"/>
+    <exclude name="**/.DS_Store/**"/>
+    <exclude name="**/.svn/**"/>
+    <exclude name="**/.sbas/**"/>
+    <exclude name="**/.IJI.*/**"/>
+    <exclude name="**/vssver.scc/**"/>
+    <exclude name="**/vssver2.scc/**"/>
+  </patternset>
+  <patternset id="compiler.resources">
+    <include name="**/?*.properties"/>
+    <include name="**/?*.xml"/>
+    <include name="**/?*.html"/>
+    <include name="**/?*.dtd"/>
+    <include name="**/?*.tld"/>
+    <include name="**/?*.gif"/>
+    <include name="**/?*.png"/>
+    <include name="**/?*.jpeg"/>
+    <include name="**/?*.jpg"/>
+  </patternset>
+  
+  <!-- JDK definitions -->
+  
+  <property name="jdk.bin.1.6" value="${jdk.home.1.6}/bin"/>
+  <path id="jdk.classpath.1.6">
+    <fileset dir="${jdk.home.1.6}">
+      <include name="jre/lib/charsets.jar"/>
+      <include name="jre/lib/jce.jar"/>
+      <include name="jre/lib/jsse.jar"/>
+      <include name="jre/lib/management-agent.jar"/>
+      <include name="jre/lib/resources.jar"/>
+      <include name="jre/lib/rt.jar"/>
+      <include name="jre/lib/ext/dnsns.jar"/>
+      <include name="jre/lib/ext/localedata.jar"/>
+      <include name="jre/lib/ext/sunjce_provider.jar"/>
+    </fileset>
+  </path>
+  
+  <property name="project.jdk.home" value="${jdk.home.1.6}"/>
+  <property name="project.jdk.bin" value="${jdk.bin.1.6}"/>
+  <property name="project.jdk.classpath" value="jdk.classpath.1.6"/>
+  
+  
+  <!-- Project Libraries -->
+  
+  <path id="library.ostermillercsvparser.classpath">
+    <pathelement location="${basedir}/lib/ostermillerutils.jar"/>
+  </path>
+  
+  
+  <!-- Global Libraries -->
+  
+  <path id="library.log4j.classpath">
+    <pathelement location="E:/JavaAPIs/apache-log4j-1.2.15/log4j-1.2.15.jar"/>
+  </path>
+  
+  <path id="library.apache_commons_file_upload.classpath">
+    <pathelement location="U:/commons-fileupload-1.2.1/lib/commons-fileupload-1.2.1.jar"/>
+    <pathelement location="U:/commons-io-1.4/commons-io-1.4.jar"/>
+  </path>
+  
+  
+  <!-- Application Server Libraries -->
+  
+  <!-- Modules -->
+  
+  
+  <!-- Module 4mality -->
+  
+  <dirname property="module.4mality.basedir" file="${ant.file}"/>
+  
+  
+  <property name="module.jdk.home.4mality" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.4mality" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.4mality" value="${project.jdk.classpath}"/>
+  
+  <property name="compiler.args.4mality" value="${compiler.args}"/>
+  
+  <property name="4mality.output.dir" value="${module.4mality.basedir}/build/4mality/WEB-INF/classes"/>
+  <property name="4mality.testoutput.dir" value="${module.4mality.basedir}/build/4mality/WEB-INF/classes"/>
+  
+  <path id="4mality.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+  
+  <path id="4mality.module.classpath">
+    <path refid="${module.jdk.classpath.4mality}"/>
+    <pathelement location="${module.4mality.basedir}/lib/colt.jar"/>
+    <pathelement location="${module.4mality.basedir}/lib/ostermillerutils.jar"/>
+    <pathelement location="${module.4mality.basedir}/lib/jdom.jar"/>
+    <pathelement location="${module.4mality.basedir}/lib/xercesImpl.jar"/>
+    <pathelement location="${module.4mality.basedir}/lib/mail.jar"/>
+    <pathelement location="${module.4mality.basedir}/lib/activation.jar"/>
+    <pathelement location="E:/apps/apache-tomcat-6.0.16 8082/lib/mysql-connector-java-5.1.6-bin.jar"/>
+    <pathelement location="E:/apps/IntelliJ IDEA 7.0.4/lib/j2ee.jar"/>
+    <path refid="library.apache_commons_file_upload.classpath"/>
+    <path refid="library.ostermillercsvparser.classpath"/>
+    <path refid="library.log4j.classpath"/>
+  </path>
+  
+  <path id="4mality.runtime.module.classpath">
+    <path refid="${module.jdk.classpath.4mality}"/>
+    <pathelement location="${4mality.output.dir}"/>
+    <pathelement location="${module.4mality.basedir}/lib/colt.jar"/>
+    <pathelement location="${module.4mality.basedir}/lib/jdom.jar"/>
+    <pathelement location="${module.4mality.basedir}/lib/xercesImpl.jar"/>
+    <pathelement location="${module.4mality.basedir}/lib/ostermillerutils.jar"/>
+    <pathelement location="${module.4mality.basedir}/lib/mail.jar"/>
+    <pathelement location="${module.4mality.basedir}/lib/activation.jar"/>
+    <pathelement location="E:/apps/apache-tomcat-6.0.16 8082/lib/mysql-connector-java-5.1.6-bin.jar"/>
+    <pathelement location="E:/apps/IntelliJ IDEA 7.0.4/lib/j2ee.jar"/>
+    <path refid="library.apache_commons_file_upload.classpath"/>
+    <path refid="library.ostermillercsvparser.classpath"/>
+    <path refid="library.log4j.classpath"/>
+  </path>
+  
+  
+  <patternset id="excluded.from.module.4mality">
+    <patternset refid="ignored.files"/>
+  </patternset>
+  
+  <patternset id="excluded.from.compilation.4mality">
+    <patternset refid="excluded.from.module.4mality"/>
+  </patternset>
+  
+  <path id="4mality.module.sourcepath">
+    <dirset dir="${module.4mality.basedir}">
+      <include name="src"/>
+    </dirset>
+  </path>
+  
+  
+  <target name="compile.module.4mality" depends="compile.module.4mality.production,compile.module.4mality.tests" description="Compile module 4mality"/>
+  
+  <target name="compile.module.4mality.production" description="Compile module 4mality; production classes">
+    <mkdir dir="${4mality.output.dir}"/>
+    <javac destdir="${4mality.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.4mality}/javac">
+      <compilerarg line="${compiler.args.4mality}"/>
+      <bootclasspath refid="4mality.module.bootclasspath"/>
+      <classpath refid="4mality.module.classpath"/>
+      <src refid="4mality.module.sourcepath"/>
+      <patternset refid="excluded.from.compilation.4mality"/>
+    </javac>
+    
+    <copy todir="${4mality.output.dir}">
+      <fileset dir="${module.4mality.basedir}/src">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+  
+  <target name="compile.module.4mality.tests" depends="compile.module.4mality.production" description="compile module 4mality; test classes" unless="skip.tests"/>
+  
+  <target name="clean.module.4mality" description="cleanup module">
+    <delete dir="${4mality.output.dir}"/>
+    <delete dir="${4mality.testoutput.dir}"/>
+  </target>
+  
+  <property name="4malityweb.dir.exploded" value="${module.4mality.basedir}/out/exploded/4malityWeb"/>
+  <!--<property name="4malityweb.path.war" value="${module.4mality.basedir}/out/formality.war"/>-->
+  <target name="j2ee.build.4malityweb" depends="compile.module.4mality, compile.module.4mality" description="Build configured Java EE directories and archives for facet 'Web'">
+    <antcall target="j2ee.build.exploded.4malityweb">
+      <param name="j2ee.dir.exploded" value="${4malityweb.dir.exploded}"/>
+    </antcall>
+    <!--<antcall target="war.cadmium">-->
+      <!--<param name="j2ee.path.jar" value="${4malityweb.path.war}"/>-->
+    <!--</antcall>-->
+    <!--<antcall target="war.local">-->
+      <!--<param name="j2ee.path.jar" value="${4malityweb.path.war}"/>-->
+    <!--</antcall>-->
+
+  </target>
+  
+  <!-- Call the target to build exploded directory for module 'Web'.
+       Path to the exploded directory is specified by parameter 'j2ee.dir.exploded' -->
+  <target name="j2ee.build.exploded.4malityweb" description="Build exploded directory for facet 'Web'">
+    <copy file="${module.4mality.basedir}/web/WEB-INF/web.xml" tofile="${j2ee.dir.exploded}/WEB-INF/web.xml"/>
+    <copy file="${module.4mality.basedir}/web/META-INF/context.xml" tofile="${j2ee.dir.exploded}/META-INF/context.xml"/>
+    <copy file="${module.4mality.basedir}/lib/xercesImpl.jar" tofile="${j2ee.dir.exploded}/WEB-INF/lib/xercesImpl.jar"/>
+    <copy file="${module.4mality.basedir}/lib/mail.jar" tofile="${j2ee.dir.exploded}/WEB-INF/lib/mail.jar"/>
+    <copy file="${module.4mality.basedir}/lib/jdom.jar" tofile="${j2ee.dir.exploded}/WEB-INF/lib/jdom.jar"/>
+    <copy file="${module.4mality.basedir}/lib/colt.jar" tofile="${j2ee.dir.exploded}/WEB-INF/lib/colt.jar"/>
+    <copy file="${module.4mality.basedir}/lib/ostermillerutils.jar" tofile="${j2ee.dir.exploded}/WEB-INF/lib/ostermillerutils.jar"/>
+    <copy file="${module.4mality.basedir}/lib/activation.jar" tofile="${j2ee.dir.exploded}/WEB-INF/lib/activation.jar"/>
+    <copy file="E:/JavaAPIs/apache-log4j-1.2.15/log4j-1.2.15.jar" tofile="${j2ee.dir.exploded}/WEB-INF/lib/log4j-1.2.15.jar"/>
+    <copy file="${module.4mality.basedir}/../../commons-io-1.4/commons-io-1.4.jar" tofile="${j2ee.dir.exploded}/WEB-INF/lib/commons-io-1.4.jar"/>
+    <copy file="${module.4mality.basedir}/../../commons-fileupload-1.2.1/lib/commons-fileupload-1.2.1.jar" tofile="${j2ee.dir.exploded}/WEB-INF/lib/commons-fileupload-1.2.1.jar"/>
+    <copy todir="${j2ee.dir.exploded}/WEB-INF/classes">
+      <fileset dir="${module.4mality.basedir}/build/4mality/WEB-INF/classes"/>
+    </copy>
+    <copy todir="${j2ee.dir.exploded}/">
+      <fileset dir="${module.4mality.basedir}/../resources"/>
+    </copy>
+    <copy todir="${j2ee.dir.exploded}/">
+      <fileset dir="${module.4mality.basedir}/web"/>
+    </copy>
+  </target>
+  
+  <!-- Call the target to build war archive for module 'Web'.
+       Path to the archive file is specified by parameter 'j2ee.path.jar' -->
+  <!--<target name="j2ee.build.war.4malityweb" description="Build War File for facet 'Web'">-->
+  <target name="war.cadmium" description="Build War File for facet 'Web'">
+    <!--<dirname property="jar.dir" file="${j2ee.path.jar}"/>-->
+    <dirname property="jar.dir" file="${formality.cadmium.war}"/>
+    <mkdir dir="${jar.dir}"/>
+    <!--<jar destfile="${j2ee.path.jar}" duplicate="preserve">-->
+    <jar destfile="${formality.cadmium.war}" duplicate="preserve">
+      <manifest>
+        <attribute name="Created-By" value="IntelliJ IDEA"/>
+        <attribute name="Manifest-Version" value="1.0"/>
+      </manifest>
+      <!-- We DO NOT include resources in 4mality jar file because on cadmium it reads in the name of
+      apache folder where resources live and gets them from there. -->
+     <!-- <zipfileset dir="${module.4mality.basedir}/web" prefix=""/>  -->
+      <zipfileset dir="${module.4mality.basedir}/resources/jsp" prefix="/jsp"/>
+      <zipfileset dir="${module.4mality.basedir}/build/4mality/WEB-INF/classes" prefix="WEB-INF/classes">
+              <exclude name="log4j.properties"/>
+        </zipfileset>
+      <zipfileset file="${module.4mality.basedir}/../../commons-fileupload-1.2.1/lib/commons-fileupload-1.2.1.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/../../commons-io-1.4/commons-io-1.4.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/log4j-1.2.8.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/activation.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/colt.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/jdom.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/mail.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/xercesImpl.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/ostermillerutils.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/web/META-INF/context.xml" prefix="META-INF"/>
+      <zipfileset file="${module.4mality.basedir}/web/WEB-INF/cadmium/web.xml" prefix="WEB-INF"/>
+      <zipfileset dir="${module.4mality.basedir}/web/WEB-INF/cadmium" includes="log4j.properties" prefix="WEB-INF/classes"/>
+
+
+    </jar>
+  </target>
+
+ <target name="war.rose" description="Build Rose War File for facet 'Web'">
+    <!--<dirname property="jar.dir" file="${j2ee.path.jar}"/>-->
+    <dirname property="jar.dir" file="${formality.rose.war}"/>
+    <mkdir dir="${jar.dir}"/>
+    <!--<jar destfile="${j2ee.path.jar}" duplicate="preserve">-->
+    <jar destfile="${formality.rose.war}" duplicate="preserve">
+      <manifest>
+        <attribute name="Created-By" value="IntelliJ IDEA"/>
+        <attribute name="Manifest-Version" value="1.0"/>
+      </manifest>
+      <!-- We DO NOT include resources in 4mality jar file because on cadmium it reads in the name of
+      apache folder where resources live and gets them from there. -->
+     <!-- <zipfileset dir="${module.4mality.basedir}/web" prefix=""/>  -->
+      <zipfileset dir="${module.4mality.basedir}/resources/jsp" prefix="/jsp"/>
+      <zipfileset dir="${module.4mality.basedir}/build/4mality/WEB-INF/classes" prefix="WEB-INF/classes">
+              <exclude name="log4j.properties"/>
+        </zipfileset>
+      <zipfileset file="${module.4mality.basedir}/../../commons-fileupload-1.2.1/lib/commons-fileupload-1.2.1.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/../../commons-io-1.4/commons-io-1.4.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/log4j-1.2.8.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/activation.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/colt.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/jdom.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/mail.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/xercesImpl.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/ostermillerutils.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/web/META-INF/context.xml" prefix="META-INF"/>
+      <zipfileset file="${module.4mality.basedir}/web/WEB-INF/rose/web.xml" prefix="WEB-INF"/>
+      <zipfileset dir="${module.4mality.basedir}/web/WEB-INF/rose" includes="log4j.properties" prefix="WEB-INF/classes"/>
+
+
+    </jar>
+  </target>
+
+ <!-- Call the target to build war archive for module 'Web'.
+       Path to the archive file is specified by parameter 'j2ee.path.jar' -->
+  <target name="war.local" description="Build War File for running on localhost tomcat">
+    <dirname property="local" file="${formality.chinacat.war}"/>
+    <mkdir dir="${local}"/>
+    <jar destfile="${formality.chinacat.war}" duplicate="preserve">
+      <manifest>
+        <attribute name="Created-By" value="IntelliJ IDEA"/>
+        <attribute name="Manifest-Version" value="1.0"/>
+      </manifest>
+     <!-- <zipfileset dir="${module.4mality.basedir}/web" prefix=""/>
+      <zipfileset dir="${module.4mality.basedir}/../resources" prefix=""/>  -->
+        <zipfileset dir="${module.4mality.basedir}/resources/jsp" prefix="/jsp"/>
+        <zipfileset dir="${module.4mality.basedir}/build/4mality/WEB-INF/classes" prefix="WEB-INF/classes">
+            <exclude name="log4j.properties"/>
+            <exclude name="EchoServlet.class"/>
+            <exclude name="web"/>
+        </zipfileset>
+      <zipfileset file="${module.4mality.basedir}/../../commons-fileupload-1.2.1/lib/commons-fileupload-1.2.1.jar" prefix="WEB-INF/lib">
+               <exclude name="log4j.properties"/>
+        </zipfileset>
+      <zipfileset file="${module.4mality.basedir}/../../commons-io-1.4/commons-io-1.4.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/log4j-1.2.8.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/activation.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/colt.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/jdom.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/mail.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/xercesImpl.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/lib/ostermillerutils.jar" prefix="WEB-INF/lib"/>
+      <zipfileset file="${module.4mality.basedir}/web/META-INF/context.xml" prefix="META-INF"/>
+      <zipfileset file="${module.4mality.basedir}/web/WEB-INF/chinacat8080/web.xml" prefix="WEB-INF"/>
+       <!--<zipfileset dir="${module.4mality.basedir}/build/4mality/WEB-INF/chinacat8080" includes="log4j.properties" prefix="WEB-INF/classes"/>-->
+       <zipfileset dir="${module.4mality.basedir}/web/WEB-INF/chinacat8080" includes="log4j.properties" prefix="WEB-INF/classes"/>
+
+    </jar>
+  </target>
+  
+  <target name="init" description="Build initialization">
+    <!-- Perform any build initialization in this target -->
+  </target>
+  
+  <target name="clean" depends="clean.module.4mality" description="cleanup all"/>
+  
+  <target name="all" depends="init, clean, j2ee.build.4malityweb" description="build all"/>
+</project>

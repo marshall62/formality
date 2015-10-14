@@ -1,0 +1,192 @@
+<html>
+<head>
+<title>Question Viewer</title>
+<link rel="STYLESHEET" href="http://cadmium.cs.umass.edu/4mality/css/FourmalityCSS.css" type="text/css"/>
+<SCRIPT language="JavaScript" SRC="http://cadmium.cs.umass.edu/4mality/javascript/FourmalityJS.js">
+</SCRIPT>
+ <script type="text/javascript" src="http://cadmium.cs.umass.edu/4mality/javascript/audio-player.js"></script>  
+           <script type="text/javascript">  
+               AudioPlayer.setup("http://cadmium.cs.umass.edu/4mality/flash/player.swf", {
+                   width: 290,
+                   initialvolume: 100,
+                   transparentpagebg: "yes",
+                   left: "000000",
+                   lefticon: "FFFFFF"
+               });
+
+               function enlargeVV () {
+
+//                   alert("vicuna clicked this.src is " + imgelt.src + "vvimg.src is " + document.getElementById("vvimg").src);
+
+                   document.getElementById("vvtab").bgColor = "yellow";
+//                   document.getElementById("vvimg").src= "file:///f:/formality/4mality/resources/images/vv_double.png";
+//                   document.getElementById("vvimg").src= "http://cadmium.cs.umass.edu/4mality/images/vv_double.png";
+//                   document.getElementById("vvimg").src= "http://cadmium.cs.umass.edu/4mality/images/estella.jpg";
+//                   document.getElementById("vvimg").height= 200;
+                   document.getElementById("vvimg").src= "http://cadmium.cs.umass.edu/4mality/images/vv_double.png";
+                   document.getElementById("estimg").src= "images/estella_xsm.png";
+                   document.getElementById("cmbimg").src= "images/cm_xsm.png";
+                   document.getElementById("h2himg").src= "images/h2h_xsm.png";
+
+//                   document.getElementById("vvimg").src= "http://cadmium.cs.umass.edu/4mality/images/h2hound_sm.png";
+
+
+               }
+           </script>
+  <script type="text/javascript" src="http://cadmium.cs.umass.edu/4mality/javascript/jquery.js"></script>
+
+     </head>
+<body>
+<table WIDTH=100% CELLPADDING=10 HEIGHT=5>
+<tr><td CLASS=titlebar>
+
+<div CLASS=titlebar>
+<font color=#ffff66>4</font>
+<font color=#ff8c00>m</font>
+<font color=#Adff2f>a</font>
+<font color=#ffa500>l</font>
+<font color=#87cefa>i</font>
+<font color=#ffff66>t</font>
+<font color=#Adff2f>y</font>
+<font color=#87cefa>:</font>
+
+&nbsp;Question Viewer</div></td>
+</tr>
+</table>
+<script language="JavaScript"><!--
+function checkClear(theForm) {
+document.forms[0].selhint.value="";
+   theForm.action="FormalityServlet?un=1474&fxn=aut&mode=viewq"
+   theForm.submit()
+}
+
+//-->
+</script><FORM ACTION="FormalityServlet?un=1474&fxn=aut&mode=evalq" METHOD=POST NAME="QForm">
+<TABLE cellSpacing=0 cellPadding=5 width="100%" HEIGHT="450" border=1><tr><td>
+<!-- MAIN TABLE -->
+<table border=0 width=100% HEIGHT=85%><tr><td bgcolor=#ffffff valign=top width=40%>
+<table border=0 width=100% height=100%><tr><td>
+<!----------------------------------- QUESTION STEM ---->
+A <span style="color:#660000"><strong>spinner</strong></span> is <span style="color:#660000"><strong>divided into 8 equal parts</strong></span>.
+
+<br>
+<br>
+<table style="margin-left:35px">
+<tr>
+<td>
+<pre>
+2
+- of the spinner is <strong><font color="#FF0000">red</font></strong>
+8
+</pre>
+<br>
+<pre>
+1
+- of the spinner is <strong><font color="#0000FF">blue</font></strong>
+4
+
+</pre>
+<br>
+<pre>
+1
+- of the spinner is <span style="font-weight: bold"><font color="#FFFF00" style="background-color:#000000">yellow</font></span>
+2
+</pre>
+</td>
+</tr>
+</table>
+<span style="color:#660000"><strong>Which part</strong></span> of the spinner <span style="color:#660000"><strong>is LARGEST</strong></span>?<br><br>
+
+<!------------- END QUESTION STEM ------><br>
+</td></tr>
+<tr><td>
+<table><tr>
+<td>&nbsp;&nbsp;</td><td valign=top><INPUT type="radio" value="A" name="subans"></td>
+<td valign=top><b>&nbsp;A.&nbsp;</b></td><td>
+Red
+</td></tr><tr>
+<td>&nbsp;&nbsp;</td><td valign=top><INPUT type="radio" value="B" name="subans"></td>
+<td valign=top><b>&nbsp;B.&nbsp;</b></td><td>
+Blue
+</td></tr><tr>
+<td>&nbsp;&nbsp;</td><td valign=top><INPUT type="radio" value="C" name="subans"></td>
+<td valign=top><b>&nbsp;C.&nbsp;</b></td><td>
+
+Yellow
+</td></tr><tr>
+<td>&nbsp;&nbsp;</td><td valign=top><INPUT type="radio" value="D" name="subans"></td>
+<td valign=top><b>&nbsp;D.&nbsp;</b></td><td>
+They are all the same size.
+</td></tr></table>
+</td></tr>
+<tr><td>
+<table width=100%><tr><td align="left"><INPUT type="SUBMIT" value="CHECK ANSWER" name="checkAns"></td><td align="right"><INPUT type="button" value="CLEAR" name="clear" onClick="checkClear(QForm)"></td></tr></table>
+</td></tr></table>
+</td>
+<td>&nbsp;
+</td><td valign=top width=30%>
+<!-- HINT DISPLAY -->
+<table cellSpacing=0 cellPadding=5 bgColor=#eeeeee width="100%" border=1>
+<tr><td align="middle"><font face="Comic Sans MS">Understanding the Problem</font></td></tr>
+
+<tr><td>
+<TABLE width="100%" border=0><tr><td nowrap><font size="-1">Estella Explainer</font><br>
+</td><td align="right" nowrap>
+&nbsp;&nbsp;&nbsp;&nbsp;
+</td></tr><tr><TD align=center width=25%>
+<a ><img id="estimg" SRC="http://cadmium.cs.umass.edu/4mality/images/estella_sm.png" ALT="hint coach estella img" BORDER=0></a></td>
+<td align=middle>
+<a href="FormalityServlet?un=1474&fxn=aut&mode=viewaq&qtype=mc&qID=106&sellevel=1&selhint=715">
+What is the question asking?</a></td>
+</tr></table>
+</td></tr>
+<tr><td align="middle"><font face="Comic Sans MS">Solving Strategies</font></td></tr>
+<tr><td>
+<TABLE width="100%" border=0><tr><td nowrap><font size="-1">Chef Math Bear</font></td></tr>
+
+<tr><TD align=center width=25%>
+<a ><img id="cmbimg" SRC="http://cadmium.cs.umass.edu/4mality/images/mathBear_sm.png" ALT="hint coach math bear img" BORDER=0></a></td>
+<td align=middle><a href="FormalityServlet?un=1474&fxn=aut&mode=viewaq&qtype=mc&qID=106&sellevel=1&selhint=719">
+Can we use <b>division</b> to solve the problem?</a></td>
+</tr></table>
+</td></tr>
+<tr><td>
+<TABLE width="100%" border=0><tr><td nowrap><font size="-1">How To Hound</font></td>
+</tr><tr><TD align=center width=25%>
+<a >
+    <img id="h2himg" SRC="http://cadmium.cs.umass.edu/4mality/images/h2hound_sm.png" ALT="hint coach how to hound img" BORDER=0></a></td>
+<td align=middle><a href="FormalityServlet?un=1474&fxn=aut&mode=viewaq&qtype=mc&qID=106&sellevel=1&selhint=723">
+What is another way to think about the problem?</a></td>
+
+</tr></table>
+</td></tr>
+<tr><td>
+<TABLE id="vvtab" width="100%" border=0><tr><td nowrap><font size="-1">Visual Vicuna</font></td>
+</tr><tr><TD align=center width=25%>&nbsp;&nbsp;
+<a  onClick="enlargeVV();" >
+    <img  id="vvimg" SRC="http://cadmium.cs.umass.edu/4mality/images/vicuna_sm.png" ALT="hint coach visual Vicuna img" BORDER=0></a></td>
+<td align=middle><a href="FormalityServlet?un=1474&fxn=aut&mode=viewaq&qtype=mc&qID=106&sellevel=1&selhint=721">
+How can I see the problem in a picture?</a></td></tr></table>
+</td></tr></table>
+<!--END HINT DISPLAY -->
+</td>
+</tr></table>
+<INPUT TYPE=HIDDEN NAME="qtype" VALUE="mc">
+
+<INPUT TYPE=HIDDEN NAME="sellevel" VALUE="1">
+
+<INPUT TYPE=HIDDEN NAME="selhint" VALUE="">
+
+<INPUT TYPE=HIDDEN NAME="qID" VALUE="106">
+
+</FORM>
+<hr>
+<table WIDTH=100%><TR bgColor=#eeeeee>
+<TD><table width=100%><tr><td>
+&nbsp;
+</TD><td align=right>
+<TABLE bgColor=#eeeeee border=0><TR><TD>
+<font color="#9586f9" face="Comic Sans MS">
+<a href="FormalityServlet?un=1474&fxn=aut&mode=editq&qID=106">edit question</a>&nbsp;|&nbsp;<a href="FormalityServlet?un=1474&fxn=aut&mode=authhome">admin home</a></TR></TABLE></td></TR></TABLE></td></TR></TABLE>
+
+</td></tr></table>

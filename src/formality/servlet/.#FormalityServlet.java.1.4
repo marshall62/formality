@@ -1,0 +1,302 @@
+package formality.servlet;
+
+import formality.content.SystemInfo;
+
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletContext;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Map;
+import java.util.Enumeration;
+
+import formality.controller.FormalitySubsystem;
+import formality.html.GeneralHtml;
+import formality.parser.StringEncoder;
+import formality.Util.InitParams;
+
+
+    /**
+     * Created by IntelliJ IDEA.
+     * User: gordon
+     * Date: Jun 10, 2005
+     * Time: 10:10:10 AM
+     * To change this template use File | Settings | File Templates.
+     */
+    public class FormalityServlet extends HttpServlet {// extends  DbBaseServlet {
+
+      public void init(ServletConfig config) throws ServletException
+        {
+          super.init(config);
+       //   InitParams initParams = new InitParams();
+        //  initParams.storeParameters(config.getServletContext());
+          /*
+           try{
+         Class.forName("sun.jdbc.odbc.JdbcOdbcDriver");
+         //conn= DriverManager.getConnection("jdbc:odbc:great1", "great", "great");
+           conn= DriverManager.getConnection("jdbc:odbc:4mality", "4mality_login", "!4Te$t<pR*p>");
+         }
+       catch(Exception sqlx) {
+               System.err.println("Error- could not load db driver");
+               sqlx.printStackTrace();
+       }
+        */
+        }
+
+
+            public void doGet( HttpServletRequest req, HttpServletResponse res )
+            throws ServletException, IOException
+        {
+              doService(req, res);
+
+
+        }
+
+        /**
+         * Handles HTTP POST requests.
+         */
+        public void doPost( HttpServletRequest req, HttpServletResponse res )
+            throws ServletException, IOException
+        {
+           doService(req, res);
+        }
+
+        public void doService(HttpServletRequest request,
+                              HttpServletResponse response)
+        {
+        Connection conn=null;
+        String curUrl=null;
+    //    String msg_="";
+            HttpSession session = request.getSession();
+
+       //Get the Web App init params from the WEBINF file
+        InitParams initParams = new InitParams();
+        initParams.storeParameters(session.getServletContext());
+
+         String retUrl= (String)session.getAttribute("retUrl");
+         // ServletParams params = null;
+          StringBuffer contentType = new StringBuffer();
+          StringBuffer outstr=new StringBuffer();
+          boolean flush = false;
+     //     logWebAppRequest(request);
+             curUrl=request.getRequestURI()+"?"+request.getQueryString();
+     try {
+       //Get the database params
+       //"com.inet.tds.TdsDriver";
+       String driverClass = initParams.getDbDriver();
+       String urlstr = initParams.getDbUrlString();
+
+       int loginTimeout_ = 30;
+       DriverManager.setLoginTimeout(loginTimeout_);
+
+       //Instantiate the driver and get the Connection object
+       Class.forName(driverClass);
+       conn = DriverManager.getConnection(urlstr, null, null);
+
+         formality.content.SystemInfo info = new SystemInfo();
+         info.setContextPath(request.getContextPath());//   /4mality
+         info.setServletPath(request.getServletPath());//  /servlet/FormalityServlet
+
+         Map params = request.getParameterMap();
+                          //String pp=(String)params.get("mode");
+         response.setContentType( "text/html" );	// set the response type before sending data
+                        // PrintWriter out = response.getWriter();	// for outputting text
+
+          //  flush = false;//handleRequest(servletSession);
+              FormalitySubsystem fs = new FormalitySubsystem();
+        
+        // msg_=outstr.toString();
+             flush = fs.handleRequest(params, info, conn, outstr);
+             // if(res)
+               //  msg_=msg_+" true ";
+        // else
+          //     msg_=msg_+" false ";
+        // outstr.append(msg_);
+
+            // spit out the output if not done already
+            if (!flush)
+            {
+              // set new content type if changed by handleRequest
+              if (contentType.length() > 0)
+              {
+                response.setContentType(contentType.toString());
+              }
+              flushHtmlOutput(response, outstr.toString());
+            }
+           // out.print(outstr.toString());
+           //              out.close();
+         session.setAttribute("retUrl", curUrl);
+       }
+       catch(Throwable ex){
+         StringBuffer msgBuffer = new StringBuffer();
+         msgBuffer.append("error msg: ").append(ex.toString());
+         if(initParams.isDbDebug()){
+           StackTraceElement[] st = ex.getStackTrace();
+           for(int i=0;i<st.length;i++){
+              msgBuffer.append(st[i].toString()).append("\n");
+            }
+         }
+         try{
+           if(retUrl==null)
+                  retUrl=request.getContextPath()+"/index.html";
+           GeneralHtml page=new GeneralHtml();
+           StringBuffer errstr=new StringBuffer();
+           page.getErrorPage(msgBuffer.toString(), retUrl, errstr);
+           flushHtmlOutput(response, errstr.toString());
+        }catch(Exception e){}
+
+          //outstr.append("An error has occurred: "+ex.getMessage());
+            // handle error and return an appropriate response to the user
+           // handleError(response, request, ex, params);
+     }
+   }
+
+/*
+public boolean handleRequest(DbServletSession servletSession) throws Exception
+    {
+
+        Connection conn = servletSession.getConnection();
+        loadDatabaseInfo(conn);
+        DbConnection db = new DbConnection(conn, schema_.getSchema(), null, null,
+                                           servletSession.getDataSource(), null);
+        ServletContext servletContext = getServletContext();
+       // VrroomServletSession vrroomServletSession = new VrroomServletSession(
+        //    servletSession, db, servletContext);
+        ForMalitySubsystems subsystems = new ForMalitySubsystems();
+        subsystems.handleRequest();//vrroomServletSession);
+        return false;
+    }
+    */
+        /**
+         * load the database schema, views and forms
+         */
+        /*
+        protected void loadDatabaseInfo(Connection db)
+          throws Exception
+        {
+          if(loadSchema_)
+            loadDatabaseSchema(db);
+        }
+         */
+        /**
+         * load the database schema only
+         */
+        /*
+        protected void loadDatabaseSchema(Connection db)
+          throws Exception
+        {
+          schema_.loadSchema(db);
+        }
+
+        protected void loadForms (InputStream str) throws Exception
+        {
+          forms_.loadForms(str);
+        }
+        protected void loadViews(InputStream str)
+          throws Exception
+        {
+          views_.loadViews(str);
+        }
+    */
+          public void destroy()
+        {
+            // TO DO: your cleanup code goes here
+        }
+
+        //parse
+        /*  public void add(HttpServletRequest newValues, boolean overwrite)
+      {
+        Enumeration newKeys = newValues.getParameterNames();
+
+        while(newKeys.hasMoreElements())
+        {
+             String keyname = (String)newKeys.nextElement();
+             if(overwrite == true || !containsKey(keyname))
+             {
+                String[] values = newValues.getParameterValues(keyname);
+                put(keyname, values);
+             }
+        }
+      }
+      */
+ public String getServletInfo()
+  {
+    StringBuffer contactInfo = new StringBuffer("Center for Knowledge Communication\n");
+    contactInfo.append("University of Massachusetts\n");
+    contactInfo.append("Amherst, Massachusetts  01003\n");
+    return contactInfo.toString();
+  }
+
+  protected void flushHtmlOutput(HttpServletResponse resp,
+                                 String outstr) throws Exception
+  {
+    PrintWriter out = new PrintWriter(resp.getOutputStream());
+    out.print(outstr);
+    out.flush();
+    out.close();
+  }
+
+ /*
+  protected void handleError(HttpServletResponse resp,
+                                   HttpServletRequest request,
+                                   Throwable exception, Map params)
+        {
+          try
+          {
+            String str = null;
+            // determine the type of error
+           // CkcError error = getErrorObject(exception);
+            // if an user error, just send back the message to the user
+         //   if(error.isUserError())
+         //   {
+         //     if(exception instanceof UserException)
+         //       emailUserError((UserException)exception); //email the instructor
+              // get the error message
+              str = userErrorURL(error);
+              flushHtmlOutput(resp, str);
+          //  }
+          //  else
+          //  {
+           //   if(errorManager_.isDebugMode())
+            //  {
+                // send error to output page
+            //    str = debugErrorURL(error, params);
+             //   flushHtmlOutput(resp, str);
+            //  }
+            //  else
+            //  {
+             //   error.append(params);
+             //   error.append(request);
+             //   str = internalErrorURL(error);
+            //    dispatchError(error);
+                // flushErrorOutput(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, str);
+          //      flushHtmlOutput(resp, str);
+            //  }
+            }
+          }
+          catch(Throwable ex)
+          {
+            // when an exception occurs here, send a message indicating a non-recoverable
+            // error has occurred
+            try
+            {
+              String str = unrecoverableInternalErrorURL();
+              flushErrorOutput(resp,
+                               HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                               str);
+            }
+            catch(Throwable ex2)
+            {
+              // do nothing more
+            }
+          }
+        }
+    */
+    }// end servlet
+

@@ -1,0 +1,669 @@
+package formality.controller.coursecontroller;
+
+import java.util.*;
+
+import formality.content.*;
+import formality.content.database.mysql.DBAccessor;
+import formality.content.database.mysql.AdaptiveModuleAccessor;
+import formality.content.database.ReportAccessor;
+import formality.html.*;
+import formality.html.hints.BaseHintRenderer;
+import formality.html.hints.HintRenderer2;
+import formality.html.contenttable.*;
+import formality.controller.FormalitySubsystem;
+import formality.controller.StudentSubsystem;
+import formality.controller.coursecontroller.parser.BaseStateParser;
+import formality.model.StudentInfo;
+import formality.model.BetaStudentModel;
+import formality.model.ModelEvent;
+import formality.model.ModelListener;
+import formality.model.modeldata.MotivationalModelData;
+import formality.model.motivation.MotivationalModel;
+import formality.systemerror.AuthoringException;
+
+import java.sql.Connection;
+
+/**
+ * <p>Title: BaseCourseController</p>
+ * <p>Copyright: Copyright (c) 2005</p>
+ *
+ * @author not attributable
+ * @version 1.0
+ */
+
+public class BaseCourseController implements CourseController {
+
+    DBAccessor dbAccessor_;
+    AdaptiveModuleAccessor atAccessor_;
+    ReportAccessor reptAccessor_;
+    CourseContentTable contentTable_;
+    StudentHtml studentPage_;
+    BaseHintRenderer hintRenderer_;
+    String msg_;
+    String mode_;
+    ArrayList<ModelListener> modelListeners_;
+
+    public void handleRequest(Map params, SystemInfo info, Connection conn, StringBuffer page) throws Exception {
+        mode_ = GeneralHtml.getParamStr(params, FormalitySubsystem.modeParam, "");
+        hintRenderer_ = new HintRenderer2();
+        dbAccessor_ = new DBAccessor();
+        atAccessor_ = new AdaptiveModuleAccessor();
+        reptAccessor_ = new ReportAccessor();
+        modelListeners_ = initModelListeners(conn);
+
+        if (info.getUserInfo().getSelectedCourse() == null && info.getUserInfo().getCourses().size() > 1)
+            mode_ = StudentSubsystem.studentAllCoursesMode_;
+        studentPage_ = new StudentHtml();
+        msg_ = "";
+
+        if (mode_.equals(StudentSubsystem.getStudentExamMode_)) {
+            String testNum = GeneralHtml.getParamStr(params, "testNum", "");
+            String state = testNum;
+            info.getUserInfo().setState(state);
+            mode_ = StudentSubsystem.studentHomeMode_;
+        }
+
+        if (mode_.equals(StudentSubsystem.studentHomeMode_)) {
+            ModelEvent e = new ModelEvent(ModelEvent.EventTypes.studentHome);
+            e.setUserID(info.getUserID());
+            e.setTimeStampMillis(System.currentTimeMillis());
+            contentTable_ = new BaseContentTable();
+            String state = info.getUserInfo().getState();
+            BaseStateParser parser = new BaseStateParser();
+            parser.parseState(state);
+            contentTable_.setState(parser);
+            atAccessor_.setStudentState(info.getUserID(), parser.getDBStateStr(), conn);
+            StudentInfo si = (StudentInfo) info.getUserInfo();
+            loadStudentResponseData(dbAccessor_, si, conn);
+            contentTable_.setContent(getContentVector(info, parser, conn));
+            updateModels(e);
+            studentPage_.getStudentCourseHomePage(contentTable_, null, info, page);
+        }
+
+        if (mode_.equals(StudentSubsystem.studentAllCoursesMode_)) {
+            studentPage_.getStudentAllCoursesPage(null, info, page);
+        }
+
+        else if (mode_.equals(StudentSubsystem.viewModuleMode_)) {
+            ModelEvent e = new ModelEvent(ModelEvent.EventTypes.viewModule);
+            e.setUserID(info.getUserID());
+            e.setTimeStampMillis(System.currentTimeMillis());
+            String mID = GeneralHtml.getParamStr(params, GeneralHtml.moduleID_, "");
+            if (mID.equals("")) {
+                AuthoringException ae = new AuthoringException();
+                ae.setMessage("Missing moduleID.");
+                throw ae;
+            }
+            e.setContentID(mID);
+            QModule m = dbAccessor_.loadModule(mID, conn);
+            Vector linkedQs = getModuleQuestions(m.getLinkedQuestionIDs(), conn);
+            m.setLinkedQuestions(linkedQs);
+            loadStudentResponseData(dbAccessor_, info, conn);
+            e.setContentInfoArray(m.getLinkedQuestionIDVec());
+            updateModels(e);
+            studentPage_.getModulePage(msg_, m, info, null, page);
+        }
+
+        else if (mode_.equals(StudentSubsystem.viewTestModuleMode_)) {
+            ModelEvent e = new ModelEvent(ModelEvent.EventTypes.viewTestModule);
+            e.setUserID(info.getUserID());
+            e.setTimeStampMillis(System.currentTimeMillis());
+            String mID = GeneralHtml.getParamStr(params, GeneralHtml.moduleID_, "");
+            if (mID.equals("")) {
+                AuthoringException ae = new AuthoringException();
+                ae.setMessage("Missing moduleID.");
+                throw ae;
+            }
+            QModule m = dbAccessor_.loadModule(mID, conn);
+            Vector linkedQs = getModuleQuestions(m.getLinkedQuestionIDs(), conn);
+            m.setLinkedQuestions(linkedQs);
+            loadStudentResponseData(dbAccessor_, info, conn);
+            StudentInfo si = (StudentInfo) info.getUserInfo();
+            //for a test we know they have been presented inm order
+            int numAnswered = si.getDistinctNumAnsweredInModule(mID);
+            boolean complete = (numAnswered == m.getQuestionCount());
+            m.setCompleted(complete);
+            //the question index is one-based
+            m.setCurrentIndex(numAnswered + 1);
+            updateModels(e);
+            studentPage_.getTestModulePage(msg_, m, info, page);
+        }
+
+        else if (mode_.equals(StudentSubsystem.viewQuestionMode_)) {
+            ModelEvent e = new ModelEvent(ModelEvent.EventTypes.viewQuestion);
+            e.setUserID(info.getUserID());
+            long curTS = System.currentTimeMillis();
+            e.setTimeStampMillis(curTS);
+            String mID = GeneralHtml.getParamStr(params, GeneralHtml.moduleID_, "");
+            String mType = GeneralHtml.getParamStr(params, GeneralHtml.moduleType_, "");
+            if (mID.equals("")) {
+                AuthoringException ae = new AuthoringException();
+                ae.setMessage("Missing moduleID viewQuestionMode.");
+                throw ae;
+            }
+            e.setContentID(mID);
+            QModule m = dbAccessor_.loadModule(mID, conn);
+            Vector linkedQs = getModuleQuestions(m.getLinkedQuestionIDs(), conn);
+            m.setLinkedQuestions(linkedQs);
+            loadStudentResponseData(dbAccessor_, info, conn);
+            int selQIndex = GeneralHtml.getParamInt(params, GeneralHtml.questionIndex_, -1);
+            if (selQIndex < 1)
+                throw new Exception("missing question index in evaluateTestQuestionMode moduleID: " + mID);
+            String level = GeneralHtml.getParamStr(params, GeneralHtml.selLevel_, "");
+            if (level.equals("")) {
+                level = FormalitySubsystem.defaultHintLevel;
+            }
+            try {
+                Question q = m.getLinkedQuestion(selQIndex);
+                e.setItemID(q.getID());
+                e.setLevel(Integer.toString(selQIndex));
+                e.setContentInfoArray(m.getLinkedQuestionIDVec());
+                updateModels(e);
+                if (q.getType().equals("mc")) {
+                    MultipleChoiceQuestion mcq = loadMultipleChoiceQuestion(q.getID(), info, conn);
+                    mcq.setSelLevel(level);
+                    m.setCurrentIndex(selQIndex);
+                    dbAccessor_.updateResponseLog(q.getID(), mID,
+                            mType,
+                            info.getUserID(), selQIndex,
+                            curTS, FormalitySubsystem.questionStartString,
+                            false, 0, conn);
+                    studentPage_.getMCQuestionPage(msg_, m, mcq, info, hintRenderer_, page);
+                }
+                else if (q.getType().equals("sa")) {
+                    ;//not implemented
+                }
+            } catch (Exception ex) {
+                AuthoringException ae = new AuthoringException();
+                ae.setMessage("Error loading question QModule.getLinkedQuestion. questionID " + m.getLinkedQuestionID(selQIndex) + " mod index " + selQIndex);
+                throw ae;
+            }
+        }
+
+        // process asynchronous call from client when user views an external activity
+        else if (mode_.equals(StudentSubsystem.viewExternalActivity)) {
+            String mID = GeneralHtml.getParamStr(params, GeneralHtml.moduleID_, "");
+            String mType = GeneralHtml.getParamStr(params, GeneralHtml.moduleType_, "");
+            String hID = GeneralHtml.getParamStr(params, GeneralHtml.selHintID_, "");
+            int qIndex = GeneralHtml.getParamInt(params, GeneralHtml.questionIndex_, -1); // what is this?
+            String userID = info.getUserID();
+            QModule m = dbAccessor_.loadModule(mID, conn);
+            Vector linkedQs = getModuleQuestions(m.getLinkedQuestionIDs(), conn);
+            m.setLinkedQuestions(linkedQs);
+            if (qIndex < 1)
+                throw new Exception("missing question index in evaluateTestQuestionMode moduleID: " + mID);
+            String level = GeneralHtml.getParamStr(params, GeneralHtml.selLevel_, "");
+            if (level.equals(""))
+                level = FormalitySubsystem.defaultHintLevel;//default
+            Question q = m.getLinkedQuestion(qIndex);
+            if (q.getType().equals("mc")) {
+                MultipleChoiceQuestion mcq = loadMultipleChoiceQuestion(q.getID(), info, conn);
+                mcq.setSelLevel(level);
+                if (!hID.equals("")) {
+                    Hint hint = mcq.getHints().getHint(hID);
+                    if (hint != null) {
+                        dbAccessor_.initHintLog(hID, q.getID(), userID, hint.getCoachID(), mID, mType,
+                                Integer.parseInt(hint.getLevel()), 0, System.currentTimeMillis(), 0, conn);
+                        mcq.setActiveTag(GeneralHtml.getHighlightTag(mcq.getSelLevel(), hint.getCoachID()));
+                    }
+                }
+            }
+        }
+
+        else if (mode_.equals(StudentSubsystem.viewHintMode_)) {
+            ModelEvent e = new ModelEvent(ModelEvent.EventTypes.viewHint);
+            e.setUserID(info.getUserID());
+            e.setTimeStampMillis(System.currentTimeMillis());
+            String mID = GeneralHtml.getParamStr(params, GeneralHtml.moduleID_, "");
+            String mType = GeneralHtml.getParamStr(params, GeneralHtml.moduleType_, "");
+            if (mID.equals("")) {
+                AuthoringException ae = new AuthoringException();
+                ae.setMessage("Missing moduleID viewHintMode.");
+                throw ae;
+            }
+            e.setContentID(mID);
+            QModule m = dbAccessor_.loadModule(mID, conn);
+            Vector linkedQs = getModuleQuestions(m.getLinkedQuestionIDs(), conn);
+            m.setLinkedQuestions(linkedQs);
+            loadStudentResponseData(dbAccessor_, info, conn);
+            int selQIndex = GeneralHtml.getParamInt(params, GeneralHtml.questionIndex_, -1);
+            if (selQIndex < 1)
+                throw new Exception("missing question index in evaluateTestQuestionMode moduleID: " + mID);
+            String level = GeneralHtml.getParamStr(params, GeneralHtml.selLevel_, "");
+            if (level.equals(""))
+                level = FormalitySubsystem.defaultHintLevel;//default
+            Question q = m.getLinkedQuestion(selQIndex);
+            e.setItemID(q.getID());
+            e.setqIndex(selQIndex);
+            e.setContentInfoArray(m.getLinkedQuestionIDVec());
+            if (q.getType().equals("mc")) {
+                MultipleChoiceQuestion mcq = loadMultipleChoiceQuestion(q.getID(), info, conn);
+                mcq.setSelLevel(level);
+                String hID = GeneralHtml.getParamStr(params, GeneralHtml.selHintID_, "");
+                if (!hID.equals("")) {
+                    Hint hint = mcq.getHints().getHint(hID);
+                    if (hint != null) {
+                        dbAccessor_.initHintLog(hID, q.getID(), info.getUserID(), hint.getCoachID(), mID, mType,
+                                Integer.parseInt(hint.getLevel()), 0, System.currentTimeMillis(), 0, conn);
+                        mcq.setActiveTag(GeneralHtml.getHighlightTag(mcq.getSelLevel(), hint.getCoachID()));
+                    }
+                }
+                mcq.setSelHintID(hID);
+                e.setHintID(hID);
+                updateModels(e);
+                m.setCurrentIndex(selQIndex);
+                studentPage_.getMCQuestionPage(msg_, m, mcq, info, hintRenderer_, page);
+            }
+            else if (q.getType().equals("sa")) {
+                ;//
+            }
+        }
+
+        else if (mode_.equals(StudentSubsystem.selectLevelMode_)) {
+            ModelEvent e = new ModelEvent(ModelEvent.EventTypes.selectHintLevel);
+            e.setUserID(info.getUserID());
+            e.setTimeStampMillis(System.currentTimeMillis());
+            viewQuestion(params, info, conn, e, page);
+        }
+
+        else if (mode_.equals(StudentSubsystem.clearQuestionMode_)) {
+            ModelEvent e = new ModelEvent(ModelEvent.EventTypes.clearQuestion);
+            e.setUserID(info.getUserID());
+            e.setTimeStampMillis(System.currentTimeMillis());
+            viewQuestion(params, info, conn, e, page);
+        }
+
+        else if (mode_.equals(StudentSubsystem.viewTestQuestionMode_)) {
+            ModelEvent e = new ModelEvent(ModelEvent.EventTypes.viewTestQuestion);
+            e.setUserID(info.getUserID());
+            long curTS = System.currentTimeMillis();
+            e.setTimeStampMillis(curTS);
+            String mID = GeneralHtml.getParamStr(params, GeneralHtml.moduleID_, "");
+            if (mID.equals("")) {
+                AuthoringException ae = new AuthoringException();
+                ae.setMessage("Missing moduleID.");
+                throw ae;
+            }
+            int selQIndex = GeneralHtml.getParamInt(params, GeneralHtml.questionIndex_, -1);
+            if (selQIndex < 1) {
+                throw new Exception("Missing question index in view question mode. ModID " + mID + " UserID " + info.getUserID());
+            }
+            QModule m = dbAccessor_.loadModule(mID, conn);
+            Vector linkedQs = getModuleQuestions(m.getLinkedQuestionIDs(), conn);
+            m.setLinkedQuestions(linkedQs);
+            Question q = m.getLinkedQuestionByIndex(selQIndex);
+            if (q == null)
+                throw new Exception("question index not found in view question mode. ModID " + mID + " UserID " + info.getUserID());
+            e.setItemID(q.getID());
+            e.setContentID(mID);
+            updateModels(e);
+            m.setCurrentIndex(selQIndex);
+            MultipleChoiceQuestion mcq = loadMultipleChoiceQuestion(q.getID(), info, conn);
+            dbAccessor_.updateResponseLog(q.getID(), mID,
+                    m.getType(),
+                    info.getUserID(), selQIndex,
+                    curTS, FormalitySubsystem.questionStartString,
+                    false, 0, conn);
+            m.setCurrentIndex(selQIndex);
+            studentPage_.getMCTestQuestionPage(msg_, m, mcq, info, false, page);
+        }
+
+        else if (mode_.equals(StudentSubsystem.evaluateQuestionMode_)) {
+            ModelEvent e = new ModelEvent(ModelEvent.EventTypes.evaluateQuestion);
+            e.setUserID(info.getUserID());
+            long currentTS = System.currentTimeMillis();
+            e.setTimeStampMillis(currentTS);
+            String mID = GeneralHtml.getParamStr(params, GeneralHtml.moduleID_, "");
+            if (mID.equals("")) {
+                AuthoringException ae = new AuthoringException();
+                ae.setMessage("Missing moduleID.");
+                throw ae;
+            }
+            e.setContentID(mID);
+            loadStudentModResponseData(dbAccessor_, info, mID, conn);
+            int selQIndex = GeneralHtml.getParamInt(params, GeneralHtml.questionIndex_, -1);
+            if (selQIndex < 1)
+                throw new Exception("missing question index in evaluateTestQuestionMode moduleID: " + mID);
+            String level = GeneralHtml.getParamStr(params, GeneralHtml.selLevel_, "");
+            if (level.equals(""))
+                level = FormalitySubsystem.defaultHintLevel;
+            String subAns = GeneralHtml.getParamStr(params, GeneralHtml.submittedAns_, "");
+            String type = GeneralHtml.getParamStr(params, GeneralHtml.questionType_, "");
+            QModule m = dbAccessor_.loadModule2(mID, conn);
+            Question q = m.getLinkedQuestion(selQIndex);
+            Vector linkedQs = getModuleQuestions(m.getLinkedQuestionIDs(), conn);
+            m.setLinkedQuestions(linkedQs);
+            if (q.getType().equals("mc")) {
+                MultipleChoiceQuestion mcq = new MultipleChoiceQuestion(q);
+                dbAccessor_.loadMultipleChoiceQuestionAnswers(mcq, conn);
+                mcq.setHints(dbAccessor_.loadAllHints(mcq.getID(), info, conn));
+                mcq.setSelLevel(level);
+                mcq.setSubmittedAnswer(subAns);
+                e.setItemID(mcq.getID());
+                e.setContentInfo(mcq.getContentInfoArray());
+                e.setResponse(subAns);
+                e.setqIndex(selQIndex);
+                e.setContentInfoArray(m.getLinkedQuestionIDVec());
+                if (subAns.equals("")) {
+                    msg_ = "Choose an answer choice and click \"Check Answer\"";
+                }
+                else {
+                    if (mcq.getCorrectAnswer().equalsIgnoreCase(subAns)) {
+                        mcq.setCorrect(true);
+                        e.setCorrect(true);
+                    }
+                    mcq.setEvaluated(true);
+                    dbAccessor_.updateResponseLog(mcq.getID(), mID,
+                            m.getType(),
+                            info.getUserID(), selQIndex,
+                            currentTS, subAns,
+                            mcq.isCorrect(), 0, conn);
+                    updateModels(e);
+                    loadStudentModResponseData(dbAccessor_, info, mID, conn);
+                }
+                m.setCurrentIndex(selQIndex);
+                studentPage_.getMCQuestionPage(msg_, m, mcq, info, hintRenderer_, page);
+            }
+            else if (type.equals("sa")) {
+                ;//
+            }
+        }
+        else if (mode_.equals(StudentSubsystem.evaluateTestQuestionMode_)) {
+            ModelEvent e = new ModelEvent(ModelEvent.EventTypes.evaluateTestQuestion);
+            e.setUserID(info.getUserID());
+            long curTS = System.currentTimeMillis();
+            e.setTimeStampMillis(curTS);
+            String mID = GeneralHtml.getParamStr(params, GeneralHtml.moduleID_, "");
+            if (mID.equals("")) {
+                AuthoringException ae = new AuthoringException();
+                ae.setMessage("Missing moduleID.");
+                throw ae;
+            }
+            e.setContentID(mID);
+            loadStudentModResponseData(dbAccessor_, info, mID, conn);
+            QModule m = dbAccessor_.loadModule(mID, conn);
+            StudentInfo si = (StudentInfo) info.getUserInfo();
+            Vector linkedQs = getModuleQuestions(m.getLinkedQuestionIDs(), conn);
+            m.setLinkedQuestions(linkedQs);
+            // selQIndex is the index of the question being answered. This comes from the page.
+            // curTestIndex is the index of the last question answered in the module.
+            // the selQIndex should be one greater than the curTestIndex. otherwise the student
+            // might have used the browser back button.
+            // At the beginning of a test mod,  selQIndex = 1, curTestIndex = 0
+            int selQIndex = GeneralHtml.getParamInt(params, GeneralHtml.questionIndex_, -1);
+            if (selQIndex < 1) {
+                throw new Exception("missing question index in evaluateTestQuestionMode moduleID: " + mID);
+            }
+            int curTestIndex = 0;
+            // latestQID is null if no questions have been answered
+            String latestQID = si.getLatestQuestionIDAnswered(mID);
+            if (latestQID != null)
+                curTestIndex = m.getQuestionIndex(latestQID);
+            //if the last answered index is one less, proceed to evaluate- else- display the proper question
+            if (curTestIndex == (selQIndex - 1)) {
+                Question q = m.getLinkedQuestion(selQIndex);
+                MultipleChoiceQuestion mcq = loadMultipleChoiceQuestion(q.getID(), info, conn);
+                String subAns = GeneralHtml.getParamStr(params, GeneralHtml.submittedAns_, "");
+                if (subAns.equals("")) {
+                    msg_ = "Choose an answer choice and click \"Check Answer\"";
+                    m.setCurrentIndex(selQIndex);
+                    studentPage_.getMCTestQuestionPage(msg_, m, mcq, info, false, page);
+                }
+                else {
+                    e.setItemID(mcq.getID());
+                    e.setContentInfo(mcq.getContentInfoArray());
+                    e.setResponse(subAns);
+                    //evaluate and record
+                    if (mcq.getCorrectAnswer().equalsIgnoreCase(subAns)) {
+                        mcq.setCorrect(true);
+                        e.setCorrect(true);
+                    }
+                    dbAccessor_.updateResponseLog(mcq.getID(), mID,
+                            m.getType(),
+                            info.getUserID(), selQIndex,
+                            curTS, subAns,
+                            mcq.isCorrect(), 0, conn);
+                    boolean completed = (selQIndex == m.getQuestionCount());
+                    updateModels(e);
+                    if (completed) {
+                        //get viewTestModulePage
+                        m.setCompleted(true);
+                        loadStudentResponseData(dbAccessor_, info, conn);
+                        studentPage_.getTestModulePage(msg_, m, info, page);
+                    }
+                    else {
+                        //load and view next question
+                        selQIndex++;
+                        q = m.getLinkedQuestion(selQIndex);
+                        mcq = loadMultipleChoiceQuestion(q.getID(), info, conn);
+                        curTS = System.currentTimeMillis();
+                        dbAccessor_.updateResponseLog(mcq.getID(), mID,
+                                m.getType(),
+                                info.getUserID(), selQIndex,
+                                curTS, FormalitySubsystem.questionStartString,
+                                mcq.isCorrect(), 0, conn);
+                        m.setCurrentIndex(selQIndex);
+                        studentPage_.getMCTestQuestionPage(msg_, m, mcq, info, false, page);
+                    }
+                }//end the answer string was not blank
+            }// else- the back button was used
+            else {
+                curTestIndex = Math.max(1, curTestIndex);
+                curTestIndex++;
+                Question q = m.getLinkedQuestion(curTestIndex);
+                MultipleChoiceQuestion mcq = loadMultipleChoiceQuestion(q.getID(), info, conn);
+                msg_ = "Please do not use the \"Back\" or \"Forward\" buttons on your browser.";
+                m.setCurrentIndex(curTestIndex++);
+                studentPage_.getMCTestQuestionPage(msg_, m, mcq, info, false, page);
+            }
+        }
+        else if (mode_.equals(StudentSubsystem.viewExternalActivity)) {
+            String mID = GeneralHtml.getParamStr(params, GeneralHtml.moduleID_, "");
+            String mType = GeneralHtml.getParamStr(params, GeneralHtml.moduleType_, "");
+            String qid = GeneralHtml.getParamStr(params, GeneralHtml.questionID_, "");
+            String externalActUrl = GeneralHtml.getParamStr(params, GeneralHtml.externalActivityUrl_, "");
+            long curTS = System.currentTimeMillis();
+            // TODO don't know what to use for modIndex, ordinality or isCorrect
+            dbAccessor_.updateResponseLog(qid, mID,
+                    mType,
+                    info.getUserID(), -1,
+                    curTS, externalActUrl,
+                    false, 0, conn);
+        }
+    }
+
+    public Vector getModuleQuestions(Iterator qIDit, Connection conn) throws Exception {
+        Vector questions = new Vector();
+        while (qIDit.hasNext()) {
+            String qID = (String) qIDit.next();
+            Question q = dbAccessor_.loadQuestion(qID, conn);
+            questions.add(q);
+        }
+        return questions;
+    }
+
+    protected MultipleChoiceQuestion loadMultipleChoiceQuestion(String qID, SystemInfo info, Connection conn) throws Exception {
+        MultipleChoiceQuestion q = dbAccessor_.loadMultipleChoiceQuestion(qID, conn);
+        Hints hints = dbAccessor_.loadAllQuestionHints(q, conn);
+        q.setHints(hints);
+        return q;
+    }
+
+    //given a Question object of type mc, load the hints and mc answers
+    protected void loadMultipleChoiceQuestion(Question q, SystemInfo info, Connection conn) throws Exception {
+        dbAccessor_.loadMultipleChoiceQuestionAnswers((MultipleChoiceQuestion) q, conn);
+        //MultipleChoiceQuestion q =dbAccessor_.loadMultipleChoiceQuestion(qID, conn);
+        //takes a Question arg:
+        Hints hints = dbAccessor_.loadAllQuestionHints(q, conn);
+        q.setHints(hints);
+        //return q;
+    }
+
+    protected void viewQuestion(Map params, SystemInfo info,
+                                Connection conn, ModelEvent e, StringBuffer page) throws Exception {
+        String mID = GeneralHtml.getParamStr(params, GeneralHtml.moduleID_, "");
+        if (mID.equals("")) {
+            AuthoringException ae = new AuthoringException();
+            ae.setMessage("Missing moduleID.");
+            throw ae;
+        }
+        QModule m = dbAccessor_.loadModule(mID, conn);
+        Vector linkedQs = getModuleQuestions(m.getLinkedQuestionIDs(), conn);
+        m.setLinkedQuestions(linkedQs);
+        loadStudentResponseData(dbAccessor_, info, conn);
+        String selHintId = GeneralHtml.getParamStr(params,GeneralHtml.selHintID_,null);
+        int selQIndex = GeneralHtml.getParamInt(params, GeneralHtml.questionIndex_, -1);
+        if (selQIndex < 1)
+            throw new Exception("missing question index in evaluateTestQuestionMode moduleID: " + mID);
+        String level = GeneralHtml.getParamStr(params, GeneralHtml.selLevel_, "");
+        if (level.equals(""))
+            level = FormalitySubsystem.defaultHintLevel;//default
+        Question q = m.getLinkedQuestion(selQIndex);
+        e.setItemID(q.getID());
+        e.setContentID(mID);
+        e.setqIndex(selQIndex);
+        e.setContentInfo(q.getContentInfoArray());
+        updateModels(e);
+        if (q.getType().equals("mc")) {
+            MultipleChoiceQuestion mcq = loadMultipleChoiceQuestion(q.getID(), info, conn);
+            mcq.setSelLevel(level);
+            mcq.setSelHintID(selHintId);
+            m.setCurrentIndex(selQIndex);
+            studentPage_.getMCQuestionPage(msg_, m, mcq, info, hintRenderer_, page);
+        }
+        else if (q.getType().equals("sa")) {
+            ;//
+        }
+    }
+
+    //get response data for all modules
+    protected void loadStudentResponseData(DBAccessor dbAccessor,
+                                           SystemInfo info, Connection conn) throws Exception {
+        StudentInfo si = (StudentInfo) info.getUserInfo();
+        loadStudentResponseData(dbAccessor, si, conn);
+    }
+
+    //get response data for all modules
+    protected void loadStudentResponseData(DBAccessor dbAccessor,
+                                           StudentInfo si, Connection conn) throws Exception {
+        //get answered and correct question IDs for each mod
+        //the TreeMap has key: mID  val:  Vector of DataTuples: first= qID, second=Correct third=responseTS
+        TreeMap modData = new TreeMap();
+        dbAccessor.getQuestionResponseDataForEachMod(si.getUserID(), modData, conn);
+        si.setModResponseData(modData);
+    }
+
+    //get response data for a module
+    protected void loadStudentModResponseData(DBAccessor dbAccessor,
+                                              SystemInfo info, String modID, Connection conn) throws Exception {
+        StudentInfo si = (StudentInfo) info.getUserInfo();
+        //get answered and correct question IDs for each mod
+        //the TreeMap has key: mID  val:  Vector of DataTuples: first= qID, second=Correct third=responseTS
+        TreeMap modData = new TreeMap();
+        dbAccessor.getModQuestionResponseData(info.getUserID(), modID, modData, conn);
+        si.setModResponseData(modData);
+    }
+
+    // load the content, calculate state, place content into the Vector
+    // also: the pre and post test modIDs are set into the student info object
+    private Vector getContentVector(SystemInfo info, BaseStateParser parser,
+                                    Connection conn) throws Exception {
+        String courseID = info.getUserInfo().getCourseID();
+        //String studentID = info.getUserID();
+        StudentInfo si = (StudentInfo) info.getUserInfo();
+        //module vectors may be empty, but not null
+        Vector ptMods = dbAccessor_.loadActiveModulesOfType(courseID, "PreTest", conn);
+        Vector pMods = dbAccessor_.loadActiveModulesOfType(courseID, "Practice", conn);
+        Vector tMods = dbAccessor_.loadActiveModulesOfType(courseID, "Test", conn);
+        Vector pstMods = dbAccessor_.loadActiveModulesOfType(courseID, "PostTest", conn);
+        si.setPreTestModData(ptMods);
+        si.setPostTestModData(pstMods);
+        boolean allPreTestModsComplete = si.isPreTestCompleted();
+        boolean allPracticeModsComplete = areModsCompleted(pMods, si);
+        boolean allTestModsComplete = areModsCompleted(tMods, si);
+        boolean allPostTestModsComplete = si.isPostTestCompleted();
+        boolean isPostTest = parser.showPostTest();
+        if (ptMods.size() > 0 && !allPreTestModsComplete)
+            parser.setPt();
+        else
+            parser.setP();
+        if (allPracticeModsComplete && allTestModsComplete) {
+            if (isPostTest) {
+                if (allPostTestModsComplete)
+                    parser.setFin();
+                else
+                    parser.setPst();
+            }
+            else {
+                if (pstMods.size() > 0)
+                    parser.setS();
+                else if (pMods.size() == 0)
+                    ;
+                else
+                    parser.setFin();
+            }
+        }
+        else if (allPracticeModsComplete &&
+                (allTestModsComplete || tMods.size() == 0) &&
+                allPreTestModsComplete &&
+                pstMods.size() > 0 &&
+                !allPostTestModsComplete) {
+            parser.setPst();
+        }
+
+        Vector content = new Vector();
+        content.add(ptMods);
+        content.add(pMods);
+        content.add(tMods);
+        content.add(pstMods);
+        return content;
+    }
+
+    private boolean areModsCompleted(Vector mods, StudentInfo si) {
+        if (mods == null || mods.size() == 0)
+            return true;
+        boolean allCompleted = true;
+        for (int i = 0; i < mods.size(); i++) {
+            QModule m = (QModule) mods.get(i);
+            if (si.isCompletedModule(m.getID(), m.getQuestionCount()))
+                m.setCompleted(true);
+            else
+                allCompleted = false;
+        }
+        return allCompleted;
+    }
+
+    //create the list of models that will be updated in this controller
+    //this is currently hard-coded HERE, might become a database or xml file option?
+    public ArrayList<ModelListener> initModelListeners(Connection conn) throws Exception {
+        ArrayList<ModelListener> modelListeners = new ArrayList<ModelListener>();
+        ModelListener bsm = new BetaStudentModel();
+        Object[] bsmInitObjs = {dbAccessor_, reptAccessor_, conn};
+        bsm.init(bsmInitObjs);
+        modelListeners.add(bsm);
+        return modelListeners;
+    }
+
+    public void updateModels(ModelEvent e) throws Exception {
+        Iterator<ModelListener> modelIter = modelListeners_.iterator();
+        while (modelIter.hasNext()) {
+            ModelListener curModel = modelIter.next();
+            curModel.updateModel(e);
+        }
+    }
+
+    public void addModel(ModelListener ml) throws Exception {
+        modelListeners_.add(ml);
+    }
+
+    public ModelListener getModel(String modelName) throws Exception {
+        ModelListener model = null;
+        for (int i = 0; i < modelListeners_.size(); i++) {
+            ModelListener curModel = modelListeners_.get(i);
+            if (curModel.getClass().getSimpleName().equals(modelName))
+                model = curModel;
+        }
+        return model;
+    }
+
+}

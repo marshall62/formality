@@ -1,0 +1,14 @@
+Assumption:  You run wayang in your debugger on a port other than 8080 (e.g. I run on port 8082).
+
+The key thing is that we are installing 4mality to run in your Tomcat Service that is NOT part of the tomcat
+that runs in the IDEA debugger.   I have my Tomcat service running on port 8080.
+
+So in the text below you'll need to interpret 8080 and 8082 appropriately for your machine.
+
+Run Tomcat as a service on port 8080
+
+Place the formality.war file in the Tomcat webapps folder.   It should create a formality folder under webapps
+
+The web.xml in the formality folder now needs to be edited so that it is appropriate for your machine:
+
+

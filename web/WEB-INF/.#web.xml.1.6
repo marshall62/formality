@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+		  http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+         version="2.5">
+    <context-param>
+        <param-name>error.adminemail</param-name>
+        <param-value>marshall@cs.umass.edu</param-value>
+    </context-param>
+    <context-param>
+        <param-name>error.smtpserver</param-name>
+        <param-value>loki.cs.umass.edu</param-value>
+    </context-param>
+    <context-param>
+        <param-name>error.logfile</param-name>
+        <param-value>4mality_ERROR_LOG.txt</param-value>
+    </context-param>
+     <context-param>
+        <param-name>error.logdir</param-name>
+        <param-value>E:\\apps\\Apache2.2.9\\apache-tomcat-6.0.18\\webapps\\formality\\log</param-value>
+    </context-param>
+    <context-param>
+        <param-name>imgFileDir</param-name>
+        <param-value>E:\\apps\\Apache2.2.9\\htdocs\\4mality\\media\\images</param-value>
+    </context-param>
+    <context-param>
+        <param-name>resourceURI</param-name>
+        <param-value>http://cadmium.cs.umass.edu/4mality</param-value>
+    </context-param>
+
+    <servlet>
+        <servlet-name>FormalityServlet</servlet-name>
+        <servlet-class>formality.servlet.FormalityServlet</servlet-class>
+        <init-param>
+            <param-name>db</param-name>
+            <param-value>jdbc/formalitydb</param-value>
+        </init-param>
+
+
+    </servlet>
+    <servlet>
+        <servlet-name>QuestionFileUploadServlet</servlet-name>
+        <servlet-class>formality.servlet.QuestionFileUploadServlet</servlet-class>
+        <init-param>
+            <param-name>db</param-name>
+            <param-value>jdbc/formalitydb</param-value>
+        </init-param>
+    </servlet>
+    <servlet>
+        <servlet-name>MediaServlet</servlet-name>
+        <servlet-class>formality.servlet.MediaServlet</servlet-class>
+        <init-param>
+            <param-name>db</param-name>
+            <param-value>jdbc/formalitydb</param-value>
+        </init-param>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>FormalityServlet</servlet-name>
+        <url-pattern>/FormalityServlet</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>QuestionFileUploadServlet</servlet-name>
+        <url-pattern>/QuestionFileUploadServlet</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>MediaServlet</servlet-name>
+        <url-pattern>/MediaServlet</url-pattern>
+    </servlet-mapping>
+
+
+</web-app>

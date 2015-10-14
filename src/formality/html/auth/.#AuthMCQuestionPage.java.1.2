@@ -1,0 +1,534 @@
+package formality.html.auth;
+
+import formality.content.SystemInfo;
+import formality.content.MultipleChoiceQuestion;
+import formality.content.Hint;
+import formality.content.Hints;
+import formality.controller.FormalitySubsystem;
+import formality.controller.AuthoringSubsystem;
+import formality.controller.TeacherSubsystem;
+import formality.model.UserInfo;
+import formality.servlet.QuestionFileUploadServlet;
+import formality.html.auth.AuthorHtml;
+import formality.html.GeneralHtml;
+import formality.html.hints.BaseHintRenderer;
+
+import java.util.Vector;
+import java.util.Iterator;
+
+/**
+ * Created by IntelliJ IDEA.
+ * User: david
+ * Date: Sep 15, 2010
+ * Time: 9:47:55 PM
+ * To change this template use File | Settings | File Templates.
+ */
+public class AuthMCQuestionPage extends AuthQuestionPage {
+
+
+
+
+    public static void getEditMultiChoiceQuestionPage(MultipleChoiceQuestion q, Hint h, SystemInfo info,
+                                               String msg, StringBuffer page) throws Exception {
+        GeneralHtml.getSmallPageHeader("Question Editor", false, page, false, info);
+        GeneralHtml.getJavascriptBegin(page);
+        String delUrl = GeneralHtml.getAuthorUrl(info.getServletRootAndID(), AuthoringSubsystem.deleteQuestionMode_,
+                GeneralHtml.questionID_, q.getID());
+        GeneralHtml.getJavascriptCheckDelete(delUrl, page);
+        // GeneralHtml.getJavascriptExtraWindow("600", "500", page);
+        getEditFormValidateJS(page);
+        GeneralHtml.getJavascriptEnd(page);
+        page.append("<body>").append("\r\n");
+        GeneralHtml.getSmallBanner("Question Editor", page);
+        if (msg != null && !msg.equals(""))
+            page.append("<h3>").append(msg).append("</h3>").append("\r\n");
+        page.append("<br>&nbsp<a href=\"");
+        Vector viewParams = new Vector();
+        viewParams.add(GeneralHtml.questionID_);
+        viewParams.add(q.getID());
+        viewParams.add(GeneralHtml.questionType_);
+        viewParams.add(q.getType());
+        page.append(GeneralHtml.getAuthorUrl(info.getServletRootAndID(), AuthoringSubsystem.viewQuestionMode_,
+                viewParams));
+        page.append("\">View Question</a>");
+        String x = null;
+        int xx=x.length();
+        page.append("<FORM ACTION=\"").append(GeneralHtml.getSaveQuestionSubmit(
+                info.getServletRootAndID(), q.getID()));
+        page.append("\" METHOD=\"POST\" NAME=\"QEEditForm\">").append("\r\n");
+        page.append("* denotes a required field:");
+        page.append("<TABLE BORDER=1 CELLSPACING=0>").append("\r\n");
+        page.append("<tr BGCOLOR=#eeeeee><td>").append("\r\n");
+        page.append("&nbsp;QuestionID&nbsp;").append("\r\n");
+        page.append("</td><td>").append("\r\n");
+        page.append("&nbsp;").append(q.getID()).append("&nbsp;\r\n");
+        page.append("</td></tr>").append("\r\n");
+        page.append("<tr BGCOLOR=#eeeeee><td>").append("\r\n");
+        page.append("&nbsp;Type&nbsp;").append("\r\n");
+        page.append("</td><td>").append("\r\n");
+        page.append("&nbsp;").append(q.getType()).append("&nbsp;\r\n");
+        page.append("</td></tr>").append("\r\n");
+        page.append("<tr BGCOLOR=#eeeeee><td>").append("\r\n");
+        page.append("&nbsp;Author&nbsp;").append("\r\n");
+        page.append("</td><td>").append("\r\n");
+        page.append("&nbsp;").append(q.getAuthor()).append("&nbsp;\r\n");
+        page.append("</td></tr>").append("\r\n");
+        insertClassificationAttributes(q,info,true,page);
+        insertStem(q, info, page);
+
+        page.append("<TABLE WIDTH=60%><TR><TD ALIGN=left>").append("\r\n");
+        page.append("<INPUT TYPE=\"SUBMIT\" NAME=\"save\" VALUE=\"Save\" onClick=\"return validate()\">");
+        page.append("</td><TD ALIGN=right>");
+        page.append("<INPUT TYPE=\"button\" NAME=\"delete\" VALUE=\"Delete\" onClick=\"checkDel(QEEditForm)\">");
+        page.append("</td></tr></table>");
+
+        insertAnswerChoices(q, page);
+        // code deleted from here in comment at bottom
+        page.append("<BR><BR>").append("\r\n");
+        GeneralHtml.getHiddenParam(GeneralHtml.questionType_, "mc", page);
+        getHintTable(info, q.getHints(), q.getID(), page);
+        page.append("<BR>").append("\r\n");
+        if (h != null) {
+            getUnlinkEditHintTable(h, info.getServletRootAndID(), info, q.getID(), page);
+            page.append("<BR>").append("\r\n");
+        }
+        page.append("<b>Link an Existing Hint To This Question:</b><br>");
+        page.append("<a HREF=\"").append(GeneralHtml.getSelectHintUrl(info.getServletRootAndID(), q.getID()));
+        page.append("\"> <b>Select from Existing Hints</b></a>").append("\r\n");
+        page.append("<BR>").append("\r\n");
+        page.append("<TABLE BGCOLOR=\"#eeeeee\" CELLSPACING=0 CELLPADDING=0><TR>").append("\r\n");
+        page.append("<TD>&nbsp;<b>New Hint</b>&nbsp;</TD></tr><tr><td>").append("\r\n");
+        page.append("<TABLE CELLSPACING=0><tr><td>&nbsp;Step&nbsp;</td><td>").append("\r\n");
+        getLevelSelect(page);
+        page.append("</td></tr><tr><td>&nbsp;Coach&nbsp;</td><td>").append("\r\n");
+        getCoachSelect(info, page);
+        page.append("</td></tr><tr><td>&nbsp;Answer Choice Link&nbsp;</td><td>").append("\r\n");
+        AuthorHtml.getAnsChoiceLinkSelect(page);
+        page.append("</td></tr></table>").append("\r\n");
+        page.append("</td></tr><tr><TD><table><tr><td>&nbsp;Query&nbsp;</td><td>").append("\r\n");
+        page.append("<TEXTAREA NAME=\"").append(GeneralHtml.query_);
+        page.append("\" COLS=50 ROWS=3 WRAP=virtual></TEXTAREA></td>").append("\r\n");
+        page.append("</tr><tr><td>&nbsp;Response&nbsp;</td><td>").append("\r\n");
+        page.append("<TEXTAREA NAME=\"").append(GeneralHtml.response_);
+        page.append("\" COLS=50 ROWS=10 WRAP=virtual></TEXTAREA></td>").append("\r\n");
+        page.append("</tr></table></TD></TR><tr><td><TABLE BORDER=0 CELLSPACING=0><tr><td>").append("\r\n");
+        page.append("&nbsp;Strategies&nbsp;").append("\r\n");
+        getStrategySelect(info, page);
+        page.append("</td></tr></table></TD></TR><TR><TD>&nbsp;</TD></TR></table>").append("\r\n");
+        page.append("<BR>").append("\r\n");
+        page.append("<TABLE WIDTH=60%><TR><TD ALIGN=left>").append("\r\n");
+        page.append("<INPUT TYPE=\"SUBMIT\" NAME=\"save\" VALUE=\"Save\" onClick=\"return validate()\">");
+        page.append("</td><TD ALIGN=right>");
+        page.append("<INPUT TYPE=\"button\" NAME=\"delete\" VALUE=\"Delete\" onClick=\"checkDel(QEEditForm)\">");
+        page.append("</td></tr></table>");
+        page.append("<br>Don't forget to save any changes before viewing.<br>");
+        page.append("<a href=\"");
+        page.append(GeneralHtml.getAuthorUrl(info.getServletRootAndID(), AuthoringSubsystem.viewQuestionMode_,
+                viewParams));
+        page.append("\">View Question</a>");
+        page.append("</TD></TR></TABLE>").append("\r\n");
+        // GeneralHtml.getHiddenParam( ,info.getUserID(), page);
+        page.append("</form>").append("\r\n");
+        insertFileUploads(page, q, info.getUserInfo());
+        Vector links = new Vector();
+        Vector selParams = new Vector();
+        selParams.add(GeneralHtml.categoryID_);
+        selParams.add(q.getCategoryID());
+        selParams.add(GeneralHtml.categoryName_);
+        selParams.add(info.getCategoryName(q.getCategoryID()));
+        links.add(GeneralHtml.getLinkStr(GeneralHtml.getAuthorUrl(info.getServletRootAndID(), AuthoringSubsystem.selectQuestionMode_, selParams), "select question"));
+        links.add(GeneralHtml.getLinkStr(GeneralHtml.getAuthorUrl(info.getServletRootAndID(), AuthoringSubsystem.authorHomeMode_), "author home"));
+        GeneralHtml.getGeneralPageFooter(links, page);
+    }
+
+
+
+    public static void getNewMultiChoiceQuestionPage(MultipleChoiceQuestion q, String msg, SystemInfo info, StringBuffer page) throws Exception {
+        GeneralHtml.getSmallPageHeader("New Multiple Choice Question", false, page, false, info);
+        page.append("<body>").append("\r\n");
+        GeneralHtml.getSmallBanner("New Multiple Choice Question", page);
+        GeneralHtml.getJavascriptBegin(page);
+        getEditFormValidateJS(page);
+        GeneralHtml.getJavascriptEnd(page);
+        if (msg != null)
+            page.append("<h3>").append(msg).append("</h3>").append("\r\n");
+        page.append("<h3>").append("* denotes a required field").append("</h3>").append("\r\n");
+        page.append("<FORM ACTION=\"").append(GeneralHtml.getSaveNewQuestionSubmit(info.getServletRootAndID()));
+        page.append("\" METHOD=\"POST\"  NAME=\"QEForm\">").append("\r\n");
+        page.append("<TABLE BORDER=1 CELLSPACING=0>").append("\r\n");
+        page.append("<tr BGCOLOR=#eeeeee><td>").append("\r\n");
+        page.append("&nbsp;Author&nbsp;").append("\r\n");
+        page.append("</td><td>").append("\r\n");
+        page.append("&nbsp;").append(info.getUserInfo().getLogin()).append("\r\n");
+        page.append("</td></tr>").append("\r\n");
+        page.append("<tr BGCOLOR=#eeeeee><td>").append("\r\n");
+        page.append("&nbsp;Type&nbsp;").append("\r\n");
+        page.append("</td><td>").append("\r\n");
+        page.append("&nbsp;").append("mc").append("&nbsp;\r\n");
+        page.append("</td></tr>").append("\r\n");
+        insertClassificationAttributes(q, info, false,page);
+        insertStem(q, info, page);
+        insertAnswerChoices(q, page);
+
+        page.append("<br><BR>").append("\r\n");
+        GeneralHtml.getHiddenParam(GeneralHtml.author_, info.getUserInfo().getLogin(), page);
+        GeneralHtml.getHiddenParam(GeneralHtml.questionType_, "mc", page);
+// GeneralHtml.getHiddenParam(GeneralHtml.questionID_, qID, page);
+        page.append("<TABLE WIDTH=100%><TR><TD ALIGN=left>").append("\r\n");
+        page.append("<INPUT TYPE=\"SUBMIT\" NAME=\"SAVE\" VALUE=\"Save\" onClick=\"return validate()\">");
+        page.append("</TD></TR></TABLE>").append("\r\n");
+        page.append("</form>").append("\r\n");
+        Vector links = new Vector();
+        String homeStr = "author home";
+        if (info.getUserInfo().getAccessLevel() == FormalitySubsystem.adminAccess)
+            homeStr = "admin home";
+        links.add(GeneralHtml.getLinkStr(GeneralHtml.getAuthorUrl(info.getServletRootAndID(), AuthoringSubsystem.authorHomeMode_), homeStr));
+        GeneralHtml.getGeneralPageFooter(links, page);
+    }
+
+    private static void insertAnswerChoices(MultipleChoiceQuestion q, StringBuffer page) {
+        page.append("<BR>").append("\r\n");
+        if (q!=null)
+            getAnswerChoice("A", q.getAnswerChoiceA(), q.getAnsChoiceAFeedback(), q.isCorrectAnswer("A"), page);
+        else getAnswerChoice("A", "", "", false, page);
+
+        page.append("<BR>").append("\r\n");
+
+        if (q!=null)
+            getAnswerChoice("B", q.getAnswerChoiceB(), q.getAnsChoiceBFeedback(), q.isCorrectAnswer("B"), page);
+        else getAnswerChoice("B", "", "", false, page);
+        page.append("<BR>").append("\r\n");
+        if (q!=null)
+            getAnswerChoice("C", q.getAnswerChoiceC(), q.getAnsChoiceCFeedback(), q.isCorrectAnswer("C"), page);
+        else getAnswerChoice("C", "", "", false, page);
+        page.append("<BR>").append("\r\n");
+        if (q!=null)
+            getAnswerChoice("D", q.getAnswerChoiceD(), q.getAnsChoiceDFeedback(), q.isCorrectAnswer("D"), page);
+        else getAnswerChoice("D", "", "", false, page);
+
+        page.append("<br><b>Answer Layout:</b><br>");
+        page.append("<br>&nbsp;&nbsp;&nbsp;&nbsp;<input type=\"radio\"" + ((q != null && q.isSequentialLayout()) ? "checked" : "") + " name=\"answerLayout\" value=\"sequential\"/>Sequential");
+        page.append("<br>&nbsp;&nbsp;&nbsp;&nbsp;<input type=\"radio\"" + ((q != null && !q.isSequentialLayout()) ? "checked" : "") + "  name=\"answerLayout\" value=\"twoUp\"/>2-up Table");
+    }
+
+    private static void insertStem(MultipleChoiceQuestion q, SystemInfo info, StringBuffer page) {
+        page.append("<BR>").append("\r\n");
+        page.append("<B>Stem:</B>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;");
+        page.append("<a href=\"javascript: extraWindow('");
+        page.append(info.getContextPath()).append("/htmlHelp.html')\">Html and Hint Tag Help</a>");
+        page.append("<BR>").append("\r\n");
+        page.append("<TEXTAREA NAME=\"").append(GeneralHtml.stem_);
+        page.append("\" COLS=100 ROWS=12 WRAP=virtual>");
+        if (q!= null && q.getStem() != null)
+            page.append(q.getStem());
+        page.append("</TEXTAREA>").append("\r\n");
+        page.append("<BR>").append("\r\n");
+    }
+
+    private static void insertClassificationAttributes(MultipleChoiceQuestion q, SystemInfo info, boolean insertReadyStatus, StringBuffer page) throws Exception {
+        page.append("<tr BGCOLOR=#eeeeee><td>").append("\r\n");
+        page.append("&nbsp;Source&nbsp;").append("\r\n");
+        page.append("</td><td>").append("\r\n");
+        if (q != null && q.getSource() != null)
+            page.append("<INPUT TYPE=\"text\" NAME=\"source\" VALUE=\"").append(q.getSource()).append("\" SIZE=30 >");
+        else
+            page.append("<INPUT TYPE=\"text\" NAME=\"source\" VALUE=\"\" SIZE=30 >");
+        page.append("</td></tr>").append("\r\n");
+
+        page.append("<tr BGCOLOR=#eeeeee><td>").append("\r\n");
+        page.append("&nbsp;Topic&nbsp;").append("\r\n");
+        page.append("</td><td>").append("\r\n");
+        if (q!= null && q.getSource() != null)
+            page.append("<INPUT TYPE=\"text\" NAME=\"qtopic\" VALUE=\"").append(q.getTopic()).append("\" SIZE=30 >");
+        else
+            page.append("<INPUT TYPE=\"text\" NAME=\"qtopic\" VALUE=\"\" SIZE=30 >");
+        page.append("</td></tr>").append("\r\n");
+        page.append("<tr BGCOLOR=#eeeeee><td>").append("\r\n");
+        page.append("&nbsp;Difficulty&nbsp;").append("\r\n");
+        page.append("</td><td>").append("\r\n");
+        if (q != null && q.getDegree() != null)
+            getDiffSelect(q.getDegree(), page);
+        else
+            getDiffSelect("medium", page);
+        page.append("</td></tr>").append("\r\n");
+
+        page.append("<tr BGCOLOR=#eeeeee><td>").append("\r\n");
+        // insert Ready status code here maybe
+        if (insertReadyStatus) {
+            page.append("&nbsp;Ready Status&nbsp;").append("\r\n");
+            page.append("</td><td>").append("\r\n");
+            page.append("<INPUT TYPE=\"CHECKBOX\" NAME=\"").append(GeneralHtml.readyStatus_);
+            if (q.getStatus())
+                page.append("\" value=\"yes\" CHECKED>");
+            else
+                page.append("\" value=\"yes\">");
+            page.append("</td></tr>").append("\r\n");
+
+            page.append("<tr BGCOLOR=#eeeeee><td>").append("\r\n");
+        }
+        // category
+        page.append("&nbsp;*Category&nbsp;").append("\r\n");
+        page.append("</td><td>").append("\r\n");
+        if (q!= null && q.getCategoryID() != null)
+            getCategorySelect(info, q.getCategoryID(), page);
+        else
+            getCategorySelect(info, page);
+        page.append("</td></tr></table>").append("\r\n");
+        page.append("<br>* Must choose at least ONE standard:");
+        page.append("<TABLE BORDER=1 CELLSPACING=0><tr BGCOLOR=#eeeeee><td>").append("\r\n");
+        page.append("&nbsp;Framework Standard&nbsp;").append("\r\n");
+        page.append("</td><td>").append("\r\n");
+        if (q != null && q.getStd1() != null)
+            getFrameworkSelect(GeneralHtml.standard1_, q.getStd1(), info, page);
+        else
+            getFrameworkSelect(GeneralHtml.standard1_, info, page);
+        page.append("</td><td>").append("\r\n");
+        page.append("&nbsp;Framework Standard&nbsp;").append("\r\n");
+        page.append("</td><td>").append("\r\n");
+        if (q != null && q.getStd2() != null)
+            getFrameworkSelect(GeneralHtml.standard2_, q.getStd2(), info, page);
+        else
+            getFrameworkSelect(GeneralHtml.standard2_, info, page);
+        page.append("</td><td>").append("\r\n");
+        page.append("&nbsp;Framework Standard&nbsp;").append("\r\n");
+        page.append("</td><td>").append("\r\n");
+        if (q!= null && q.getStd3() != null)
+            getFrameworkSelect(GeneralHtml.standard3_, q.getStd3(), info, page);
+        else
+            getFrameworkSelect(GeneralHtml.standard3_, info, page);
+        page.append("</td></tr></table>").append("\r\n");
+    }
+
+    public static void getAnswerChoice(String choice, String text, String feedback,
+                                boolean isCorr, StringBuffer page) {
+        if (text == null)
+            text = "";
+        if (feedback == null)
+            feedback = "";
+        String ansName = "", feedbackName = "";
+        String[] sa = getAnswerNameAndFeedbackName(choice);
+        ansName = sa[0];
+        feedbackName = sa[1];
+        page.append("<B>Answer Choice ").append(choice).append(":</B><BR>").append("\r\n");
+        page.append("<TABLE CELLSPACING=0 CELLPADDING=0><TR><TD>&nbsp;").append("\r\n");
+        page.append("<INPUT TYPE=\"RADIO\" NAME=\"").append(GeneralHtml.correctAnsChoice_);
+        page.append("\" VALUE=\"").append(choice).append("\"");
+        if (isCorr)
+            page.append(" checked>");
+        else
+            page.append(">");
+        page.append("</TD><TD><table  BGCOLOR=\"#eeeeee\"><tr><td>&nbsp;Text&nbsp;</td><td>").append("\r\n");
+        page.append("<TEXTAREA NAME=\"");
+        page.append(ansName);
+        page.append("\" COLS=50 ROWS=3 WRAP=virtual>").append(text).append("</TEXTAREA>").append("\r\n");
+        page.append("</td></tr><tr><td>&nbsp;Feedback&nbsp;</td><td>").append("\r\n");
+        page.append("<TEXTAREA NAME=\"");
+        page.append(feedbackName);
+        page.append("\" COLS=50 ROWS=3 WRAP=virtual>").append(feedback).append("</TEXTAREA>").append("\r\n");
+        page.append("</td></tr></table></TD></TR></table>").append("\r\n");
+    }
+
+    public static void getDiffSelect(String sel, StringBuffer page) throws Exception {
+        page.append("<SELECT NAME=\"").append(GeneralHtml.degree_).append("\" SIZE=1>").append("\r\n");
+        for (int i = 0; i < GeneralHtml.degrees.length; i++) {
+            page.append("<OPTION VALUE=\"").append(GeneralHtml.degrees[i]);
+            if (sel.equals(GeneralHtml.degrees[i]))
+                page.append("\" SELECTED>");
+            else
+                page.append("\">");
+            page.append(GeneralHtml.degrees[i]).append("\r\n");
+        }
+        page.append("</SELECT>").append("\r\n");
+    }
+
+
+    public static void getCategorySelect(SystemInfo info, String selID, StringBuffer page) throws Exception {
+        page.append("<SELECT NAME=\"").append(GeneralHtml.categoryID_).append("\" SIZE=1>").append("\r\n");
+        for (int i = 0; i < info.getCategorySize(); i++) {
+            String catID = info.getCategoryID(i);
+            page.append("<OPTION VALUE=\"").append(catID);
+            if (catID.equals(selID))
+                page.append("\" SELECTED>");
+            else
+                page.append("\">");
+            page.append(info.getCategoryName(i)).append("\r\n");
+        }
+        page.append("</SELECT>").append("\r\n");
+    }
+
+    //end pages- begin widgets
+    public static void getCategorySelect(SystemInfo info, StringBuffer page) throws Exception {
+        page.append("<SELECT NAME=\"").append(GeneralHtml.categoryID_).append("\" SIZE=1>").append("\r\n");
+        page.append("<OPTION VALUE=\"\">").append("\r\n");
+        for (int i = 0; i < info.getCategorySize(); i++) {
+            page.append("<OPTION VALUE=\"").append(info.getCategoryID(i));
+            page.append("\">").append(info.getCategoryName(i)).append("\r\n");
+        }
+        page.append("</SELECT>").append("\r\n");
+    }
+
+
+    public static void getFrameworkSelect(String name, SystemInfo info, StringBuffer page) {
+        page.append("<SELECT NAME=").append(name).append(" SIZE=1>").append("\r\n");
+        page.append("<OPTION VALUE=\"\" SELECTED>").append("\r\n");
+        Iterator sit = info.getStandards();
+        while (sit.hasNext()) {
+            String std = (String) sit.next();
+            page.append("<OPTION VALUE=\"").append(std).append("\">").append(std).append("\r\n");
+        }
+        page.append("</SELECT>").append("\r\n");
+    }
+
+    public static void getFrameworkSelect(String name, String selStd, SystemInfo info, StringBuffer page) {
+        if (selStd == null || selStd.equals(""))
+            getFrameworkSelect(name, info, page);
+        else {
+            page.append("<SELECT NAME=").append(name).append(" SIZE=1>").append("\r\n");
+            Iterator sit = info.getStandards();
+            while (sit.hasNext()) {
+                String std = (String) sit.next();
+                page.append("<OPTION VALUE=\"").append(std);
+                if (std.equals(selStd))
+                    page.append("\" SELECTED>");
+                else
+                    page.append("\">");
+                page.append(std).append("\r\n");
+            }
+            page.append("</SELECT>").append("\r\n");
+        }
+    }
+
+
+    public static void getCoachSelect(SystemInfo info, StringBuffer page) throws Exception {
+        page.append("<SELECT NAME=\"").append(GeneralHtml.coachID_).append("\" SIZE=1>").append("\r\n");
+        page.append("<OPTION VALUE=\"\">").append("\r\n");
+        Iterator cits = info.getCoachIDs();
+        while (cits.hasNext()) {
+            String chID = (String) cits.next();
+            page.append("<OPTION VALUE=\"").append(chID);
+            page.append("\">").append(info.getCoachName(chID)).append("\r\n");
+        }
+        page.append("</SELECT>").append("\r\n");
+    }
+
+
+    public static void getLevelSelect(StringBuffer page) throws Exception {
+        page.append("<SELECT NAME=\"").append(GeneralHtml.level_).append("\" SIZE=1>").append("\r\n");
+        page.append("<OPTION VALUE=\"\">").append("\r\n");
+        for (int i = 0; i < GeneralHtml.levels.length; i++) {
+            page.append("<OPTION VALUE=\"").append(GeneralHtml.levels[i]);
+            page.append("\">");
+            page.append(GeneralHtml.levels[i]).append("\r\n");
+        }
+        page.append("</SELECT>").append("\r\n");
+    }
+
+    public static void getStrategySelect(SystemInfo info, StringBuffer page) throws Exception {
+        page.append("<SELECT NAME=\"").append(GeneralHtml.strategyID_).append("\" SIZE=1>").append("\r\n");
+        page.append("<OPTION VALUE=\"\">").append("\r\n");
+        Vector sIDs = info.getStrategyIDs();
+        Vector sNms = info.getStrategyNames();
+        for (int i = 0; i < sIDs.size(); i++) {
+            page.append("<OPTION VALUE=\"").append(sIDs.get(i));
+            page.append("\">").append(sNms.get(i)).append("\r\n");
+        }
+        page.append("</SELECT>").append("\r\n");
+    }
+
+
+    public static void getUnlinkEditHintTable(Hint h, String root, SystemInfo info,
+                                       String qID, StringBuffer page) throws Exception {
+        page.append("<table BORDER=1 CELLPADDING=3 CELLSPACING=0><tr bgcolor=#dddddd>").append("\r\n");
+        page.append("<td>UnLink</td><td>Edit</td>");
+        page.append("<td>HintID</td><td>Step</td><td>Coach</td><td>Query</td><td>Response</td><td>Question Links</td></tr>").append("\r\n");
+        page.append("<tr bgcolor=#eeeeee><td align=center><a href=\"");
+        Vector params = new Vector();
+        params.add(GeneralHtml.hintID_);
+        params.add(h.getID());
+        params.add(GeneralHtml.questionID_);
+        params.add(qID);
+        page.append(GeneralHtml.getAuthorUrl(root, AuthoringSubsystem.unlinkQuestionHintMode_, params));
+        page.append("\">");
+        page.append("<img SRC=\"").append(info.getContextPath()).append("/images/unlink.gif\" ALT=\"unlink hint to question \" BORDER=0>");
+        page.append("</a></td><td align=center><a href=\"");
+        page.append(GeneralHtml.getAuthorUrl(root, AuthoringSubsystem.editHintMode_, params));
+        page.append("\">");
+        page.append("<img SRC=\"").append(info.getContextPath()).append("/images/edit.gif\" ALT=\"edit hint \" BORDER=0>");
+        page.append("</a></td>");
+        page.append("<td>").append(h.getID()).append("</td>");
+        page.append("<td>").append(h.getLevel()).append("</td>");
+        page.append("<td>").append(h.getCoachName()).append("</td>");
+        page.append("<td>").append(h.getQuery()).append("</td>");
+        page.append("<td>").append(GeneralHtml.getAbbrevString(h.getResponse(), 55)).append("</td><td>");
+        AuthorHtml.getQuestionIDs(h.getQuestionLinks(), page);
+        page.append("</td></tr>").append("\r\n");
+        page.append("</table>").append("\r\n");
+
+    }
+
+    private static void insertFileUploads(StringBuffer page, MultipleChoiceQuestion q, UserInfo info) {
+        String id = q.getID();
+        page.append("<FORM ACTION=\"QuestionFileUploadServlet\"");
+        page.append("\" METHOD=\"POST\" enctype=\"multipart/form-data\" NAME=\"QEForm\">").append("\r\n");
+        page.append("Image: <input type=\"file\" name=\"" + QuestionFileUploadServlet.QIMAGE + "\" size=\"80\">");
+        page.append("<BR/>");
+        page.append("Question audio: <input type=\"file\" name=\"" + QuestionFileUploadServlet.QENGLISH + "\" size=\"80\">");
+        page.append("<BR/>");
+        page.append("Spanish audio: <input type=\"file\" name=\"" + QuestionFileUploadServlet.QSPANISH + "\" size=\"80\">");
+        page.append("<BR/>");
+        page.append("<INPUT TYPE=\"SUBMIT\" NAME=\"save\" VALUE=\"Upload the files\">");
+        page.append("<INPUT TYPE=\"hidden\" NAME=\"" + QuestionFileUploadServlet.QID + "\" VALUE=\"" + id + "\" >");
+        page.append("<INPUT TYPE=\"hidden\" NAME=\"" + QuestionFileUploadServlet.ACTION + "\" VALUE=\"" + QuestionFileUploadServlet.QFILEUPLOAD + "\" >");
+        page.append("<INPUT TYPE=\"hidden\" NAME=\"" + QuestionFileUploadServlet.USERID + "\" VALUE=\"" + info.getUserID() + "\" >");
+        page.append("</form>");
+    }
+
+
+    public static void getHintTable(SystemInfo info, Hints hints,
+                             String qID, StringBuffer page) throws Exception {
+        page.append("<b>Linked Hints- click on hint ID to unlink/edit.</b>").append("\r\n");
+        page.append("<table BORDER=1 CELLPADDING=3 CELLSPACING=0><tr bgcolor=#dddddd>").append("\r\n");
+        page.append("<td>Coach</td><td>Step 1</td><td>Step 2</td><td>Step 3</td><td>Step 4</td><td>Step 5</td></tr>").append("\r\n");
+        Iterator coachIt = info.getCoachIDs();
+        while (coachIt.hasNext()) {
+            String cID = (String) coachIt.next();
+            page.append("<tr bgcolor=#eeeeee><td>").append("\r\n");
+            page.append(info.getCoachName(cID)).append("</td>");
+            AuthorHtml.getHintsRow(hints, info.getServletRootAndID(), cID, qID, page);
+            page.append("</tr>").append("\r\n");
+        }
+        page.append("</table>").append("\r\n");
+    }
+
+    /*
+
+        page.append("<BR>").append("\r\n");
+        if (q.getCorrectAnswer() != null && q.getCorrectAnswer().equalsIgnoreCase("a"))
+            getAnswerChoice("A", q.getAnswerChoiceA(), q.getAnsChoiceAFeedback(), true, page);
+        else
+            getAnswerChoice("A", q.getAnswerChoiceA(), q.getAnsChoiceAFeedback(), false, page);
+        page.append("<BR>").append("\r\n");
+        if (q.getCorrectAnswer() != null && q.getCorrectAnswer().equalsIgnoreCase("b"))
+            getAnswerChoice("B", q.getAnswerChoiceB(), q.getAnsChoiceBFeedback(), true, page);
+        else
+            getAnswerChoice("B", q.getAnswerChoiceB(), q.getAnsChoiceBFeedback(), false, page);
+        page.append("<BR>").append("\r\n");
+        if (q.getCorrectAnswer() != null && q.getCorrectAnswer().equalsIgnoreCase("c"))
+            getAnswerChoice("C", q.getAnswerChoiceC(), q.getAnsChoiceCFeedback(), true, page);
+        else
+            getAnswerChoice("C", q.getAnswerChoiceC(), q.getAnsChoiceCFeedback(), false, page);
+        page.append("<BR>").append("\r\n");
+        if (q.getCorrectAnswer() != null && q.getCorrectAnswer().equalsIgnoreCase("d"))
+            getAnswerChoice("D", q.getAnswerChoiceD(), q.getAnsChoiceDFeedback(), true, page);
+        else
+            getAnswerChoice("D", q.getAnswerChoiceD(), q.getAnsChoiceDFeedback(), false, page);
+
+        page.append("<br><b>Answer Layout:</b><br>");
+
+        page.append("<br>&nbsp;&nbsp;&nbsp;&nbsp;<input type=\"radio\"" + (q.isSequentialLayout() ? "checked" : "") + " name=\"answerLayout\" value=\"sequential\"/>Sequential");
+        page.append("<br>&nbsp;&nbsp;&nbsp;&nbsp;<input type=\"radio\"" + (!q.isSequentialLayout() ? "checked" : "") + "  name=\"answerLayout\" value=\"twoUp\"/>2-up Table");
+
+     */
+
+
+}
