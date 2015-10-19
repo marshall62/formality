@@ -78,6 +78,7 @@ public class EchoServlet extends HttpServlet
                     String user =  rs.getString(2);
                     String dbname =  rs.getString(3);
                     String version =  rs.getString(4);
+                    // test
                     out.print("<br>DB: Now: " + now + " User: " + user + " Schema: " + dbname + " Version: " +version);
 
                 }
