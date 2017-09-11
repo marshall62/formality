@@ -46,7 +46,10 @@
         <servlet-class>formality.servlet.FormalityServlet</servlet-class>
         <init-param>
             <param-name>db</param-name>
-            <param-value>jdbc/formalitydblocal</param-value>
+            <!-- use the db on rose.  Best to use this when debugging on my dev machine -->
+            <param-value>jdbc/formalitydb</param-value>
+            <!-- uses the db on the localhost -->
+            <!--<param-value>jdbc/formalitydblocal</param-value>-->
         </init-param>
         <init-param>
             <param-name>questionAudioPath</param-name>

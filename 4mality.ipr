@@ -35,6 +35,34 @@
         <element id="artifact" artifact-name="4mality:Web exploded" />
       </root>
     </artifact>
+    <artifact type="exploded-war" name="4mality:war production exploded">
+      <output-path>$PROJECT_DIR$/out/artifacts/4mality_war_production_exploded</output-path>
+      <root id="root">
+        <element id="directory" name="WEB-INF">
+          <element id="directory" name="classes">
+            <element id="module-output" name="4mality" />
+          </element>
+          <element id="directory" name="lib">
+            <element id="file-copy" path="$PROJECT_DIR$/lib/colt.jar" />
+            <element id="file-copy" path="$PROJECT_DIR$/lib/jdom.jar" />
+            <element id="file-copy" path="$PROJECT_DIR$/lib/xercesImpl.jar" />
+            <element id="file-copy" path="$PROJECT_DIR$/lib/mail.jar" />
+            <element id="file-copy" path="$PROJECT_DIR$/lib/activation.jar" />
+            <element id="library" level="project" name="OstermillerCSVParser" />
+            <element id="library" level="project" name="activation" />
+            <element id="library" level="project" name="JSAP-2.1" />
+          </element>
+        </element>
+        <element id="javaee-facet-resources" facet="4mality/web/Web For Production" />
+        <element id="dir-copy" path="$PROJECT_DIR$/resources" />
+      </root>
+    </artifact>
+    <artifact type="war" name="4mality:war production">
+      <output-path>$PROJECT_DIR$/out/artifacts/4mality_war_production</output-path>
+      <root id="archive" name="formality.war">
+        <element id="artifact" artifact-name="4mality:war production exploded" />
+      </root>
+    </artifact>
   </component>
   <component name="BuildJarProjectSettings">
     <option name="BUILD_JARS_ON_MAKE" value="false" />
@@ -66,9 +94,7 @@
       </profile>
     </annotationProcessing>
   </component>
-  <component name="CopyrightManager" default="">
-    <module2copyright />
-  </component>
+  <component name="CopyrightManager" default="" />
   <component name="DependenciesAnalyzeManager">
     <option name="myForwardDirection" value="false" />
   </component>
@@ -266,7 +292,8 @@
     <option name="myVersion" value="123" />
   </component>
   <component name="VcsDirectoryMappings">
-    <mapping directory="" vcs="CVS" />
+    <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
   </component>
   <component name="WebServicesPlugin" addRequiredLibraries="true" />
   <component name="libraryTable">
@@ -309,4 +336,3 @@
     </library>
   </component>
 </project>
-
